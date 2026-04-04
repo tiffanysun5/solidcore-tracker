@@ -1,0 +1,8 @@
+name = "solidcore-booking"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+# Secrets are set via `wrangler secret put` — never stored here:
+#   BOOKING_SECRET
+#   GITHUB_TOKEN
+#   GITHUB_REPO

@@ -1,0 +1,62 @@
+name: Daily class tracker
+
+on:
+  schedule:
+    # 8:00 AM ET = 12:00 UTC (EST) / 13:00 UTC (EDT)
+    # Run at both to cover daylight savings edge
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+    inputs:
+      force_email:
+        description: "Send email even if no new classes"
+        type: boolean
+        default: false
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
+      - name: Restore state cache
+        uses: actions/cache@v4
+        with:
+          path: state/
+          key: tracker-state-${{ github.run_id }}
+          restore-keys: |
+            tracker-state-
+
+      - name: Run tracker
+        env:
+          WELLHUB_EMAIL:       ${{ secrets.WELLHUB_EMAIL }}
+          WELLHUB_PASSWORD:    ${{ secrets.WELLHUB_PASSWORD }}
+          SMTP_USER:           ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD:       ${{ secrets.SMTP_PASSWORD }}
+          GITHUB_REPO:         ${{ github.repository }}
+        run: |
+          FLAGS="--headless"
+          if [ "${{ inputs.force_email }}" = "true" ]; then
+            FLAGS="$FLAGS --force-email"
+          fi
+          python main.py $FLAGS
+
+      - name: Upload debug screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-screenshots
+          path: "*.png"
+          if-no-files-found: ignore

@@ -1,0 +1,8 @@
+.env
+state/
+*.png
+booking_results.json
+booking_failures.txt
+__pycache__/
+*.pyc
+.playwright/

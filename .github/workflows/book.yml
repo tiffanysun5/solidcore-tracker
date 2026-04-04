@@ -1,0 +1,45 @@
+name: Book classes
+
+on:
+  workflow_dispatch:
+    inputs:
+      class_ids:
+        description: "Comma-separated Wellhub class IDs to book (copy from email digest)"
+        required: true
+        type: string
+
+jobs:
+  book:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
+      - name: Book selected classes
+        env:
+          WELLHUB_EMAIL:    ${{ secrets.WELLHUB_EMAIL }}
+          WELLHUB_PASSWORD: ${{ secrets.WELLHUB_PASSWORD }}
+        run: python book.py --headless --ids "${{ inputs.class_ids }}"
+
+      - name: Upload booking results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: booking-results
+          path: |
+            booking_results.json
+            booking_failures.txt
+            debug_book_*.png
+          if-no-files-found: ignore
