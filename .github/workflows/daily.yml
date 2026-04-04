@@ -45,7 +45,7 @@ jobs:
           WELLHUB_PASSWORD:    ${{ secrets.WELLHUB_PASSWORD }}
           SMTP_USER:           ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD:       ${{ secrets.SMTP_PASSWORD }}
-          GITHUB_REPO:         ${{ github.repository }}
+          APP_REPO:            ${{ secrets.APP_REPO }}
         run: |
           FLAGS="--headless"
           if [ "${{ inputs.force_email }}" = "true" ]; then

@@ -27,7 +27,7 @@ SMTP_HOST       = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT       = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER       = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD   = os.getenv("SMTP_PASSWORD", "")
-GITHUB_REPO     = os.getenv("GITHUB_REPO", "tiffanysun/solidcore-tracker")
+GITHUB_REPO     = os.getenv("APP_REPO", os.getenv("GITHUB_REPO", "tiffanysun5/solidcore-tracker"))
 
 
 def send_digest(matches: list[MatchedClass], to_email: str) -> None:
