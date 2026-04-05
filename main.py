@@ -52,8 +52,10 @@ def main() -> None:
                         help="Send email even if no new classes since last run")
     args = parser.parse_args()
 
-    if not os.environ.get("WELLHUB_REFRESH_TOKEN"):
-        log.error("WELLHUB_REFRESH_TOKEN must be set in environment")
+    tokens_file = Path(__file__).parent / "tokens.json"
+    if not os.environ.get("WELLHUB_REFRESH_TOKEN") and not tokens_file.exists():
+        log.error("WELLHUB_REFRESH_TOKEN env var not set and tokens.json not found. "
+                  "Set the secret in GitHub or re-run mitmproxy capture locally.")
         sys.exit(1)
 
     # ── 1. Scrape muscle focus (public, no auth) ──────────────────────────
