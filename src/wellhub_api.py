@@ -310,9 +310,88 @@ BOOKING_MUTATION = """
 mutation bookingAttendance($input: BookingAttendanceRequest!, $isBookingGeofenceEnabled: Boolean!) {
   bookingAttendance(input: $input) {
     uniqueAttendanceIdentifier
+    partnerGeofence @include(if: $isBookingGeofenceEnabled) {
+      radiusInMeters
+      partnerId
+      longitude
+      latitude
+      classOccurDate
+      classDuration
+      __typename
+    }
     restriction {
-      title { key }
-      message { key }
+      metadata
+      title {
+        key
+        params
+        namespace
+        __typename
+      }
+      message {
+        key
+        params
+        namespace
+        __typename
+      }
+      button {
+        label {
+          value {
+            ... on Translation {
+              key
+              params
+              namespace
+              __typename
+            }
+            __typename
+          }
+          accessibilityHint {
+            ... on Translation {
+              key
+              params
+              namespace
+              __typename
+            }
+            __typename
+          }
+          __typename
+        }
+        __typename
+      }
+      trackEventType
+      action
+      route
+      secondaryAction {
+        action
+        label {
+          value {
+            ... on Translation {
+              key
+              params
+              namespace
+              __typename
+            }
+            __typename
+          }
+          accessibilityHint {
+            ... on Translation {
+              key
+              params
+              namespace
+              __typename
+            }
+            __typename
+          }
+          __typename
+        }
+        enabled
+        route {
+          name
+          params
+          __typename
+        }
+        __typename
+      }
+      __typename
     }
     __typename
   }
@@ -359,15 +438,15 @@ def book_class(
                     "partnerId": partner_id,
                     "fingerprint": {
                         "version":          "10.45.9",
-                        "ip_address":       "::1",
+                        "ip_address":       "::2600:4041:5ee7:8a00:3449:d6ae",
                         "mac_address":      "02:00:00:00:00:00",
                         "device_os":        "ios",
                         "os_version":       "18.6.2",
                         "device_model_id":  "iPhone17,1",
                         "device_model":     "iPhone 16 Pro",
                         "firebase_instance_id": "DAC2CA4E24754CDBB5422602B394797A",
-                        "last_valid_latitude":  str(LAT),
-                        "last_valid_longitute": str(LNG),
+                        "last_valid_latitude":  "undefined",
+                        "last_valid_longitute": "undefined",
                         "mocked_location":  "undefined",
                     },
                     "latitude":  LAT,
