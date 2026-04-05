@@ -190,9 +190,10 @@
         return;
       }
 
-      // 2. Poll for the run to appear (up to 30 s)
+      // 2. Poll for the run to appear — use triggerTime to find only THIS run
+      const triggerTime = Date.now();
       setStatus('loading', 'Workflow started — waiting for run to begin…');
-      const runId = await pollForRun(ghRepo, ghHeaders);
+      const runId = await pollForRun(ghRepo, ghHeaders, triggerTime);
       if (!runId) {
         setStatus('loading', `Booking is running. Check <a href="https://github.com/${ghRepo}/actions/workflows/book.yml" target="_blank">GitHub Actions</a> for status.`);
         return;
@@ -217,7 +218,10 @@
     }
   }
 
-  async function pollForRun(ghRepo, headers, maxWaitMs = 30000) {
+  async function pollForRun(ghRepo, headers, triggerTime, maxWaitMs = 45000) {
+    // triggerTime = Date.now() captured just before the dispatch call.
+    // We only accept runs created AFTER that moment (minus a 5s clock skew buffer).
+    const cutoff = triggerTime - 5000;
     const started = Date.now();
     while (Date.now() - started < maxWaitMs) {
       await sleep(3000);
@@ -228,9 +232,7 @@
         );
         const data = await r.json();
         const runs = (data.workflow_runs || []);
-        // Pick the most-recent run that started within the last 60 s
-        const cutoff = Date.now() - 60000;
-        const run = runs.find(ru => new Date(ru.created_at).getTime() > cutoff);
+        const run = runs.find(ru => new Date(ru.created_at).getTime() >= cutoff);
         if (run) return run.id;
       } catch (_) {}
     }
