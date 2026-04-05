@@ -54,7 +54,7 @@ def main() -> None:
     log.info("Attempting to book %d class(es): %s", len(class_ids), ", ".join(class_ids))
 
     # Import here so the module is only loaded when booking
-    from src.wellhub import book_class
+    from src.wellhub_api import book_class
 
     results: dict[str, bool] = {}
     for class_id in class_ids:

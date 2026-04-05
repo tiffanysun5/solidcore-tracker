@@ -1,4 +1,6 @@
 .env
+session.json
+tokens.json
 state/
 *.png
 booking_results.json

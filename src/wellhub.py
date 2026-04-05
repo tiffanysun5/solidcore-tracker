@@ -21,6 +21,7 @@ import os
 import time
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Optional
 
 from playwright.sync_api import Page, sync_playwright, TimeoutError as PWTimeout
@@ -29,12 +30,14 @@ from src.config import STUDIOS, BOOKING_WINDOW_DAYS
 
 log = logging.getLogger(__name__)
 
+SESSION_FILE = Path(__file__).parent.parent / "session.json"
+
 # ---------------------------------------------------------------------------
 # Selectors — update these if Wellhub redesigns the UI
 # ---------------------------------------------------------------------------
-SEL_EMAIL_INPUT    = 'input[type="email"], input[name="email"]'
+SEL_EMAIL_INPUT    = 'input[type="email"], input[name="email"], input[name="username"]'
 SEL_PASSWORD_INPUT = 'input[type="password"]'
-SEL_LOGIN_SUBMIT   = 'button[type="submit"]'
+SEL_LOGIN_SUBMIT   = 'button:has-text("Log in"), button:has-text("Continue"), button:has-text("Next"), button[type="submit"]'
 SEL_SEARCH_INPUT   = 'input[placeholder*="search" i], input[aria-label*="search" i]'
 SEL_CLASS_CARD     = '[data-testid*="class"], [class*="ClassCard"], [class*="class-card"], article'
 SEL_CLASS_NAME     = '[class*="className"], [class*="class-name"], h3, h2'
@@ -94,38 +97,61 @@ class ClassSlot:
 # Public API
 # ---------------------------------------------------------------------------
 
-def get_schedule(email: str, password: str, headless: bool = True) -> list[ClassSlot]:
-    """Log in to Wellhub and return Solidcore classes for the next BOOKING_WINDOW_DAYS."""
-    slots: list[ClassSlot] = []
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=headless,
-            args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
-        )
+def _make_context(p, headless: bool):
+    """Create a browser context, loading saved session if available."""
+    browser = p.chromium.launch(
+        headless=headless,
+        args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
+    )
+    ua = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+          "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+
+    if SESSION_FILE.exists():
+        log.info("Loading saved session from %s", SESSION_FILE)
         ctx = browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/122.0.0.0 Safari/537.36"
-            ),
+            user_agent=ua,
+            viewport={"width": 1280, "height": 800},
+            locale="en-US",
+            storage_state=str(SESSION_FILE),
+        )
+    else:
+        log.warning("No session.json found — will attempt fresh login (may hit CAPTCHA)")
+        ctx = browser.new_context(
+            user_agent=ua,
             viewport={"width": 1280, "height": 800},
             locale="en-US",
         )
-        # Mask webdriver flag
-        ctx.add_init_script(
-            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-        )
-        page = ctx.new_page()
 
+    ctx.add_init_script(
+        "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+    )
+    return browser, ctx
+
+
+def get_schedule(email: str, password: str, headless: bool = True) -> list[ClassSlot]:
+    """Return Solidcore classes for the next BOOKING_WINDOW_DAYS using saved session."""
+    slots: list[ClassSlot] = []
+    with sync_playwright() as p:
+        browser, ctx = _make_context(p, headless)
+        page = ctx.new_page()
         try:
-            _login(page, email, password)
+            # Navigate to Wellhub — session cookies handle auth automatically
+            page.goto(WELLHUB_URL, wait_until="domcontentloaded", timeout=30_000)
+            page.wait_for_timeout(2_000)
+
+            # If we're still on the login/auth page, session has expired
+            if "identity.gympass.com" in page.url or "sign-in" in page.url:
+                log.warning("Session expired — attempting fresh login")
+                _login(page, email, password)
+
+            log.info("Authenticated — at: %s", page.url)
+
             for studio_name, studio_cfg in STUDIOS.items():
                 studio_slots = _scrape_studio(page, studio_name, studio_cfg)
                 slots.extend(studio_slots)
                 log.info("  %s: found %d classes", studio_name, len(studio_slots))
         except Exception as exc:
             log.error("Error during Wellhub scrape: %s", exc)
-            # Save a screenshot for debugging
             try:
                 page.screenshot(path="debug_screenshot.png")
                 log.info("Debug screenshot saved to debug_screenshot.png")
@@ -134,32 +160,19 @@ def get_schedule(email: str, password: str, headless: bool = True) -> list[Class
             raise
         finally:
             browser.close()
-
     return slots
 
 
 def book_class(email: str, password: str, class_id: str, headless: bool = True) -> bool:
     """Book a single class by its Wellhub class ID. Returns True on success."""
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=headless,
-            args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
-        )
-        ctx = browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/122.0.0.0 Safari/537.36"
-            ),
-            viewport={"width": 1280, "height": 800},
-            locale="en-US",
-        )
-        ctx.add_init_script(
-            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-        )
+        browser, ctx = _make_context(p, headless)
         page = ctx.new_page()
         try:
-            _login(page, email, password)
+            page.goto(WELLHUB_URL, wait_until="domcontentloaded", timeout=30_000)
+            page.wait_for_timeout(2_000)
+            if "identity.gympass.com" in page.url or "sign-in" in page.url:
+                _login(page, email, password)
             return _book_by_id(page, class_id)
         except Exception as exc:
             log.error("Booking failed for class %s: %s", class_id, exc)
@@ -179,25 +192,37 @@ def book_class(email: str, password: str, class_id: str, headless: bool = True) 
 def _login(page: Page, email: str, password: str) -> None:
     log.info("Logging in to Wellhub as %s", email)
     page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=30_000)
-    page.wait_for_timeout(2_000)  # let Cloudflare challenge resolve
+    page.wait_for_timeout(2_000)
 
-    # Fill email
-    page.wait_for_selector(SEL_EMAIL_INPUT, timeout=15_000)
-    page.fill(SEL_EMAIL_INPUT, email)
+    log.info("Landed at: %s", page.url)
 
-    # Fill password — some flows show it on the next screen
+    # Wellhub redirects directly to the password page with email pre-filled.
+    # If an email field appears first, fill it and continue to password.
     try:
-        page.fill(SEL_PASSWORD_INPUT, password)
-    except PWTimeout:
-        # Password field may appear after clicking Next
+        page.wait_for_selector(SEL_EMAIL_INPUT, timeout=4_000)
+        page.fill(SEL_EMAIL_INPUT, email)
+        log.info("Filled email field, clicking continue")
         page.click(SEL_LOGIN_SUBMIT)
-        page.wait_for_selector(SEL_PASSWORD_INPUT, timeout=10_000)
-        page.fill(SEL_PASSWORD_INPUT, password)
+        page.wait_for_timeout(2_000)
+    except PWTimeout:
+        log.info("Email step skipped — already on password page")
 
+    # Fill password and submit
+    page.wait_for_selector(SEL_PASSWORD_INPUT, timeout=15_000)
+    page.fill(SEL_PASSWORD_INPUT, password)
+    log.info("Filled password, submitting")
     page.click(SEL_LOGIN_SUBMIT)
-    # Wait for navigation away from login page
-    page.wait_for_url(lambda url: "login" not in url, timeout=20_000)
-    log.info("Login successful")
+    page.wait_for_timeout(3_000)
+
+    page.screenshot(path="debug_login_after_submit.png")
+    log.info("Post-submit url: %s", page.url)
+
+    # Wait until we land on the Wellhub app (off the identity/auth domain)
+    page.wait_for_url(
+        lambda url: "identity.gympass.com" not in url and "sign-in" not in url,
+        timeout=20_000,
+    )
+    log.info("Login successful — now at: %s", page.url)
 
 
 def _scrape_studio(page: Page, studio_name: str, studio_cfg: dict) -> list[ClassSlot]:

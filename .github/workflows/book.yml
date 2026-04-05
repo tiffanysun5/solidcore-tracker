@@ -29,8 +29,9 @@ jobs:
 
       - name: Book selected classes
         env:
-          WELLHUB_EMAIL:    ${{ secrets.WELLHUB_EMAIL }}
-          WELLHUB_PASSWORD: ${{ secrets.WELLHUB_PASSWORD }}
+          WELLHUB_EMAIL:          ${{ secrets.WELLHUB_EMAIL }}
+          WELLHUB_PASSWORD:       ${{ secrets.WELLHUB_PASSWORD }}
+          WELLHUB_REFRESH_TOKEN:  ${{ secrets.WELLHUB_REFRESH_TOKEN }}
         run: python book.py --headless --ids "${{ inputs.class_ids }}"
 
       - name: Upload booking results

@@ -5,12 +5,12 @@ Central config — studios, instructors, muscle targets, time prefs.
 STUDIOS = {
     "Chelsea": {
         "address": "155 W 23rd St",
-        "wellhub_search": "solidcore Chelsea",
+        "partner_id": "05d7c377-69fa-40a5-9a05-aaa21e2f9d8c",
         "instructors": {"Maya P.", "Katie D.", "John B.", "Jaime F.", "Robert C.", "Sydney S.", "Will T."},
     },
     "Greenwich Village": {
         "address": "37 W 8th St",
-        "wellhub_search": "solidcore Greenwich Village",
+        "partner_id": "688587f9-f40d-43dc-ac8e-2922c1a12915",
         "instructors": {"Jordan A.", "Payton B.", "Matthew C.", "Sara I.", "Bryce A.", "Sydney S."},
     },
 }

@@ -9,7 +9,7 @@ for line in Path(".env").read_text().splitlines():
         os.environ.setdefault(k.strip(), v.strip())
 
 from src.filters import MatchedClass
-from src.wellhub import ClassSlot
+from src.wellhub_api import ClassSlot
 from src.email_digest import send_digest
 from datetime import datetime
 

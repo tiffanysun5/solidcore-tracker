@@ -15,7 +15,7 @@ from datetime import date, datetime
 
 from src.config import STUDIOS, TARGET_MUSCLES, PREFERRED_START_HOUR, PREFERRED_END_HOUR
 from src.muscle_focus import muscles_for_date
-from src.wellhub import ClassSlot
+from src.wellhub_api import ClassSlot
 
 log = logging.getLogger(__name__)
 

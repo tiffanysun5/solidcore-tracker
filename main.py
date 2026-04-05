@@ -67,7 +67,7 @@ def main() -> None:
 
     # ── 2. Scrape Wellhub schedule ─────────────────────────────────────────
     log.info("Step 2: Scraping Wellhub schedule (headless=%s)", args.headless)
-    from src.wellhub import get_schedule
+    from src.wellhub_api import get_schedule
     slots = get_schedule(email, password, headless=args.headless)
     log.info("  Got %d total class slots", len(slots))
 
