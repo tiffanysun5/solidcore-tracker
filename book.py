@@ -43,25 +43,41 @@ def main() -> None:
         log.error("WELLHUB_REFRESH_TOKEN must be set")
         sys.exit(1)
 
-    class_ids = [cid.strip() for cid in args.ids.split(",") if cid.strip()]
-    if not class_ids:
+    # Each entry is either:
+    #   "slotId"                          (legacy — slot details lookup)
+    #   "slotId:classId:partnerId"        (preferred — no extra API call)
+    raw_ids = [cid.strip() for cid in args.ids.split(",") if cid.strip()]
+    if not raw_ids:
         log.error("No class IDs provided")
         sys.exit(1)
 
-    log.info("Booking %d class(es): %s", len(class_ids), ", ".join(class_ids))
+    # Parse each entry
+    parsed = []
+    for raw in raw_ids:
+        parts = raw.split(":")
+        slot_id      = parts[0]
+        class_id_gql = parts[1] if len(parts) > 1 else ""
+        partner_id   = parts[2] if len(parts) > 2 else ""
+        parsed.append((slot_id, class_id_gql, partner_id))
+
+    log.info("Booking %d class(es)", len(parsed))
 
     from src.wellhub_api import book_class
 
     results: dict[str, bool] = {}
-    for class_id in class_ids:
-        log.info("Booking slot %s ...", class_id)
-        success = book_class(class_id=class_id)
-        results[class_id] = success
-        log.info("  %s → %s", class_id, "✓ booked" if success else "✗ FAILED")
+    for slot_id, class_id_gql, partner_id in parsed:
+        log.info("Booking slot %s ...", slot_id)
+        success = book_class(
+            class_id=slot_id,
+            class_id_gql=class_id_gql,
+            partner_id=partner_id,
+        )
+        results[slot_id] = success
+        log.info("  %s → %s", slot_id, "✓ booked" if success else "✗ FAILED")
 
     booked = [cid for cid, ok in results.items() if ok]
     failed = [cid for cid, ok in results.items() if not ok]
-    log.info("Done. Booked: %d / %d", len(booked), len(class_ids))
+    log.info("Done. Booked: %d / %d", len(booked), len(parsed))
 
     with open("booking_results.json", "w") as f:
         json.dump(results, f, indent=2)

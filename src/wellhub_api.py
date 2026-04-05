@@ -153,6 +153,8 @@ class ClassSlot:
     dt: datetime
     booked: bool = False
     muscles: list[str] = field(default_factory=list)
+    class_id_gql: str = ""       # classId from partnerClassSchedule (needed for bookingAttendance)
+    partner_id: str = ""         # partnerId (per-studio constant)
 
     @property
     def date(self) -> date:
@@ -174,6 +176,8 @@ class ClassSlot:
             "datetime": self.dt.isoformat(),
             "booked": self.booked,
             "muscles": self.muscles,
+            "class_id_gql": self.class_id_gql,
+            "partner_id": self.partner_id,
         }
 
     @classmethod
@@ -185,6 +189,8 @@ class ClassSlot:
             dt=datetime.fromisoformat(d["datetime"]),
             booked=d.get("booked", False),
             muscles=d.get("muscles", []),
+            class_id_gql=d.get("class_id_gql", ""),
+            partner_id=d.get("partner_id", ""),
         )
 
 
@@ -284,6 +290,8 @@ def get_schedule(email: str = "", password: str = "", headless: bool = True) -> 
                         studio=studio_name,
                         instructor=instructor,
                         dt=dt,
+                        class_id_gql=str(item.get("classId", "")),
+                        partner_id=studio_cfg["partner_id"],
                     ))
 
             except Exception as exc:
@@ -311,25 +319,32 @@ mutation bookingAttendance($input: BookingAttendanceRequest!, $isBookingGeofence
 }
 """
 
-def book_class(email: str = "", password: str = "", class_id: str = "", headless: bool = True) -> bool:
+def book_class(
+    class_id: str = "",
+    class_id_gql: str = "",
+    partner_id: str = "",
+    # legacy kwargs ignored
+    email: str = "", password: str = "", headless: bool = True,
+) -> bool:
     """
-    Book a class slot by its slot ID.
-    class_id here is the slot ID (the `id` field from partnerClassSchedule items).
-    We also need the classId — fetch slot details first to get it.
+    Book a class slot.
+    class_id       = slot ID (the `id` from partnerClassSchedule)
+    class_id_gql   = classId from the same query (pass through from ClassSlot)
+    partner_id     = partner UUID (per-studio constant from STUDIOS config)
+
+    If class_id_gql / partner_id are not supplied, falls back to slot-details lookup.
     """
-    log.info("Booking slot %s", class_id)
-
-    # First get slot details to retrieve classId and partnerId
-    slot_details = _get_slot_details(class_id)
-    if not slot_details:
-        log.error("Could not fetch slot details for %s", class_id)
-        return False
-
-    class_id_gql = slot_details.get("classId", "")
-    partner_id   = slot_details.get("partnerId", "")
+    log.info("Booking slot %s (classId=%s partner=%s)", class_id, class_id_gql, partner_id)
 
     if not class_id_gql or not partner_id:
-        log.error("Missing classId or partnerId in slot details: %s", slot_details)
+        log.info("classId/partnerId not provided — fetching via slot details")
+        slot_details = _get_slot_details(class_id)
+        if slot_details:
+            class_id_gql = class_id_gql or slot_details.get("classId", "")
+            partner_id   = partner_id   or slot_details.get("partnerId", "")
+
+    if not class_id_gql or not partner_id:
+        log.error("Cannot book slot %s — missing classId or partnerId", class_id)
         return False
 
     try:

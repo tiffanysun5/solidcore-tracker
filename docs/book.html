@@ -93,12 +93,14 @@
   const TOKEN_KEY = 'solidcore_gh_token';
   const params    = new URLSearchParams(location.search);
 
-  const classId   = params.get('class_id')   || '';
-  const studio    = params.get('studio')      || '';
-  const instructor= params.get('instructor')  || '';
-  const dt        = params.get('dt')          || '';
-  const muscles   = params.get('muscles')     || '';
-  const repo      = params.get('repo')        || '';
+  const classId      = params.get('class_id')      || '';
+  const classIdGql   = params.get('class_id_gql')  || '';
+  const partnerId    = params.get('partner_id')     || '';
+  const studio       = params.get('studio')         || '';
+  const instructor   = params.get('instructor')     || '';
+  const dt           = params.get('dt')             || '';
+  const muscles      = params.get('muscles')        || '';
+  const repo         = params.get('repo')           || '';
 
   function init() {
     const token = localStorage.getItem(TOKEN_KEY);
@@ -165,7 +167,15 @@
       const triggerResp = await fetch(
         `https://api.github.com/repos/${ghRepo}/actions/workflows/book.yml/dispatches`,
         { method: 'POST', headers: ghHeaders,
-          body: JSON.stringify({ ref: 'main', inputs: { class_ids: classId } }) }
+          body: JSON.stringify({
+            ref: 'main',
+            inputs: {
+              // Format: slotId:classId:partnerId  (book.py splits on colons)
+              class_ids: classIdGql && partnerId
+                ? `${classId}:${classIdGql}:${partnerId}`
+                : classId
+            }
+          }) }
       );
 
       if (triggerResp.status === 401) {

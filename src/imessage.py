@@ -57,12 +57,14 @@ def _book_url(m: MatchedClass) -> str:
     owner, _, repo_name = GITHUB_REPO.partition("/")
     base   = f"https://{owner}.github.io/{repo_name}/book.html"
     params = urllib.parse.urlencode({
-        "class_id":   m.slot.wellhub_class_id,
-        "studio":     m.slot.studio,
-        "instructor": m.slot.instructor,
-        "dt":         f"{m.slot.date_str} {m.slot.time_str}",
-        "muscles":    " + ".join(m.all_muscles),
-        "repo":       GITHUB_REPO,
+        "class_id":     m.slot.wellhub_class_id,
+        "class_id_gql": m.slot.class_id_gql,
+        "partner_id":   m.slot.partner_id,
+        "studio":       m.slot.studio,
+        "instructor":   m.slot.instructor,
+        "dt":           f"{m.slot.date_str} {m.slot.time_str}",
+        "muscles":      " + ".join(m.all_muscles),
+        "repo":         GITHUB_REPO,
     })
     return f"{base}?{params}"
 
