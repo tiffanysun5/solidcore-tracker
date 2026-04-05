@@ -30,6 +30,15 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
+# Load .env file if present (local development)
+_env_path = Path(__file__).parent / ".env"
+if _env_path.exists():
+    for _line in _env_path.read_text().splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _, _v = _line.partition("=")
+            os.environ.setdefault(_k.strip(), _v.strip())
+
 STATE_FILE = Path("state/last_matches.json")
 
 
@@ -87,9 +96,10 @@ def main() -> None:
         _save_current_ids(current_ids)
         return
 
-    # ── 5. Send email digest ───────────────────────────────────────────────
+    # ── 5. Send email digest + iMessage ───────────────────────────────────
     from src.config import NOTIFY_EMAIL
     from src.email_digest import send_digest
+    from src.imessage import send_imessage
 
     if args.no_email:
         log.info("--no-email flag set — printing digest to stdout")
@@ -97,6 +107,8 @@ def main() -> None:
     else:
         log.info("Step 4: Sending email digest to %s", NOTIFY_EMAIL)
         send_digest(matches, NOTIFY_EMAIL)
+        log.info("Step 5: Sending iMessage")
+        send_imessage(matches)
 
     # ── 6. Persist state ──────────────────────────────────────────────────
     _save_current_ids(current_ids)

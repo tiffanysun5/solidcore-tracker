@@ -43,8 +43,8 @@ SEL_CLASS_INSTRUCTOR = '[class*="instructor"], [class*="coach"], [class*="teache
 SEL_BOOK_BUTTON    = 'button:has-text("Book"), button:has-text("Reserve"), a:has-text("Book")'
 SEL_CONFIRM_BUTTON = 'button:has-text("Confirm"), button:has-text("Complete")'
 
-WELLHUB_URL = "https://app.wellhub.com"
-LOGIN_URL   = f"{WELLHUB_URL}/en-US/login"
+WELLHUB_URL = "https://welcome.gympass.com"
+LOGIN_URL   = "https://gympass.com/us/people/sign-in"
 
 
 @dataclass
@@ -206,7 +206,7 @@ def _scrape_studio(page: Page, studio_name: str, studio_cfg: dict) -> list[Class
     search_term = studio_cfg["wellhub_search"]
 
     # Try navigating to activities/search
-    page.goto(f"{WELLHUB_URL}/en-US/activities", wait_until="domcontentloaded", timeout=20_000)
+    page.goto(f"{WELLHUB_URL}/activities", wait_until="domcontentloaded", timeout=20_000)
     page.wait_for_timeout(1_500)
 
     # Search for the studio
@@ -376,7 +376,7 @@ def _book_by_id(page: Page, class_id: str) -> bool:
     Navigate to the class detail page and click Book → Confirm.
     Wellhub class URLs are typically: /en-US/activities/classes/{class_id}
     """
-    url = f"{WELLHUB_URL}/en-US/activities/classes/{class_id}"
+    url = f"{WELLHUB_URL}/activities/classes/{class_id}"
     log.info("Navigating to class page: %s", url)
     page.goto(url, wait_until="domcontentloaded", timeout=20_000)
     page.wait_for_timeout(1_500)
