@@ -54,13 +54,21 @@ class MatchedClass:
 def apply_filters(
     slots: list[ClassSlot],
     focus_map: dict[date, list[str]],
+    booked_dates: set[date] | None = None,
 ) -> list[MatchedClass]:
     """
-    Apply all three filters and return matched classes sorted by datetime.
+    Apply all filters and return matched classes sorted by datetime.
+    booked_dates: calendar dates already booked — whole day is skipped.
     """
     matched: list[MatchedClass] = []
+    booked_dates = booked_dates or set()
 
     for slot in slots:
+        # 0. Skip days where user already has a booking
+        if slot.date in booked_dates:
+            log.debug("Date %s already booked — skipping %s", slot.date, slot.wellhub_class_id)
+            continue
+
         studio_cfg = STUDIOS.get(slot.studio)
         if studio_cfg is None:
             log.debug("Unknown studio %r — skipping", slot.studio)

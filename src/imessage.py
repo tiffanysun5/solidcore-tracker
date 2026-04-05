@@ -26,27 +26,31 @@ def send_imessage(matches: list[MatchedClass]) -> None:
     if not matches:
         return
 
-    # Send one message per class so each has its own tappable link
-    header = f"🏋️ Solidcore — {len(matches)} matching class{'es' if len(matches) != 1 else ''}"
-    _send(PHONE_NUMBER, header)
-
     preferred = [m for m in matches if m.preferred_time]
     other     = [m for m in matches if not m.preferred_time]
 
-    for m in preferred + other:
-        _send(PHONE_NUMBER, _class_message(m))
+    lines = [f"🏋️ Solidcore — {len(matches)} class{'es' if len(matches) != 1 else ''}"]
+
+    if preferred:
+        lines.append("\n⭐ Preferred (11am–2pm)")
+        for m in preferred:
+            lines.append(_class_block(m))
+
+    if other:
+        lines.append("\nOther times")
+        for m in other:
+            lines.append(_class_block(m))
+
+    _send(PHONE_NUMBER, "\n".join(lines))
 
 
-def _class_message(m: MatchedClass) -> str:
+def _class_block(m: MatchedClass) -> str:
     muscles = " + ".join(m.all_muscles)
-    star    = "⭐ " if m.preferred_time else ""
-    lines   = [
-        f"{star}{m.slot.date_str} · {m.slot.time_str}",
-        f"{m.slot.studio} · {m.slot.instructor}",
-        f"{muscles}",
-        _book_url(m),
-    ]
-    return "\n".join(lines)
+    return (
+        f"{m.slot.date_str} · {m.slot.time_str} · {m.slot.studio}\n"
+        f"{m.slot.instructor} · {muscles}\n"
+        f"{_book_url(m)}"
+    )
 
 
 def _book_url(m: MatchedClass) -> str:

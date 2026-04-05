@@ -45,18 +45,15 @@ STATE_FILE = Path("state/last_matches.json")
 def main() -> None:
     parser = argparse.ArgumentParser(description="Solidcore class tracker")
     parser.add_argument("--headless", action="store_true", default=False,
-                        help="Run Wellhub browser headless (use in CI)")
+                        help="(Ignored — kept for backwards compat)")
     parser.add_argument("--no-email", action="store_true",
                         help="Skip sending email (print digest to stdout)")
     parser.add_argument("--force-email", action="store_true",
                         help="Send email even if no new classes since last run")
     args = parser.parse_args()
 
-    email    = os.environ.get("WELLHUB_EMAIL", "")
-    password = os.environ.get("WELLHUB_PASSWORD", "")
-
-    if not email or not password:
-        log.error("WELLHUB_EMAIL and WELLHUB_PASSWORD must be set in environment")
+    if not os.environ.get("WELLHUB_REFRESH_TOKEN"):
+        log.error("WELLHUB_REFRESH_TOKEN must be set in environment")
         sys.exit(1)
 
     # ── 1. Scrape muscle focus (public, no auth) ──────────────────────────
@@ -65,23 +62,27 @@ def main() -> None:
     focus_map = fetch_muscle_focus()
     log.info("  Got %d days of muscle focus data", len(focus_map))
 
-    # ── 2. Scrape Wellhub schedule ─────────────────────────────────────────
-    log.info("Step 2: Scraping Wellhub schedule (headless=%s)", args.headless)
-    from src.wellhub_api import get_schedule
-    slots = get_schedule(email, password, headless=args.headless)
+    # ── 2. Fetch already-booked dates ──────────────────────────────────────
+    log.info("Step 2: Fetching already-booked dates")
+    from src.wellhub_api import get_schedule, get_booked_dates
+    booked_dates = get_booked_dates()
+
+    # ── 3. Fetch Wellhub schedule ──────────────────────────────────────────
+    log.info("Step 3: Fetching Wellhub schedule via API")
+    slots = get_schedule()
     log.info("  Got %d total class slots", len(slots))
 
-    # ── 3. Apply filters ───────────────────────────────────────────────────
-    log.info("Step 3: Applying filters")
+    # ── 4. Apply filters ───────────────────────────────────────────────────
+    log.info("Step 4: Applying filters (skipping %d already-booked date(s))", len(booked_dates))
     from src.filters import apply_filters
-    matches = apply_filters(slots, focus_map)
+    matches = apply_filters(slots, focus_map, booked_dates=booked_dates)
     log.info("  %d classes match all criteria", len(matches))
 
     if not matches:
         log.info("No matching classes — nothing to do")
         return
 
-    # ── 4. Check for new classes since last run ────────────────────────────
+    # ── 5. Check for new classes since last run ────────────────────────────
     previous_ids = _load_previous_ids()
     current_ids  = {m.slot.wellhub_class_id for m in matches}
     new_ids      = current_ids - previous_ids
@@ -96,7 +97,7 @@ def main() -> None:
         _save_current_ids(current_ids)
         return
 
-    # ── 5. Send email digest + iMessage ───────────────────────────────────
+    # ── 6. Send email digest + iMessage ───────────────────────────────────
     from src.config import NOTIFY_EMAIL
     from src.email_digest import send_digest
     from src.imessage import send_imessage
@@ -105,12 +106,12 @@ def main() -> None:
         log.info("--no-email flag set — printing digest to stdout")
         _print_digest(matches)
     else:
-        log.info("Step 4: Sending email digest to %s", NOTIFY_EMAIL)
+        log.info("Step 6a: Sending email digest to %s", NOTIFY_EMAIL)
         send_digest(matches, NOTIFY_EMAIL)
-        log.info("Step 5: Sending iMessage")
+        log.info("Step 6b: Sending iMessage")
         send_imessage(matches)
 
-    # ── 6. Persist state ──────────────────────────────────────────────────
+    # ── 7. Persist state ──────────────────────────────────────────────────
     _save_current_ids(current_ids)
     log.info("Done.")
 

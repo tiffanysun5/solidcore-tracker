@@ -151,46 +151,99 @@
     const btn = document.getElementById('book-btn');
     btn.disabled = true;
     btn.textContent = 'Booking…';
-    setStatus('loading', 'Triggering booking workflow…');
+    setStatus('loading', 'Starting booking…');
 
-    const ghRepo = repo || 'tiffanysun/solidcore-tracker';
+    const ghRepo = repo || 'tiffanysun5/solidcore-tracker';
+    const ghHeaders = {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+    };
 
     try {
-      const resp = await fetch(
+      // 1. Trigger workflow
+      const triggerResp = await fetch(
         `https://api.github.com/repos/${ghRepo}/actions/workflows/book.yml/dispatches`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/vnd.github.v3+json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ ref: 'main', inputs: { class_ids: classId } }),
-        }
+        { method: 'POST', headers: ghHeaders,
+          body: JSON.stringify({ ref: 'main', inputs: { class_ids: classId } }) }
       );
 
-      if (resp.status === 204) {
-        btn.textContent = '✓ Booked!';
-        setStatus('success', `Booking triggered for ${studio} · ${dt}.<br>
-          It finishes in ~2 min. Check
-          <a href="https://github.com/${ghRepo}/actions/workflows/book.yml" target="_blank">
-          GitHub Actions</a> for status.`);
-      } else if (resp.status === 401) {
-        btn.disabled = false;
-        btn.textContent = 'Book this class →';
+      if (triggerResp.status === 401) {
+        btn.disabled = false; btn.textContent = 'Book this class →';
         setStatus('error', 'Token rejected — it may have expired. Click "Change GitHub token" below.');
+        return;
+      }
+      if (triggerResp.status !== 204) {
+        const body = await triggerResp.text();
+        btn.disabled = false; btn.textContent = 'Book this class →';
+        setStatus('error', `GitHub returned ${triggerResp.status}: ${body}`);
+        return;
+      }
+
+      // 2. Poll for the run to appear (up to 30 s)
+      setStatus('loading', 'Workflow started — waiting for run to begin…');
+      const runId = await pollForRun(ghRepo, ghHeaders);
+      if (!runId) {
+        setStatus('loading', `Booking is running. Check <a href="https://github.com/${ghRepo}/actions/workflows/book.yml" target="_blank">GitHub Actions</a> for status.`);
+        return;
+      }
+
+      // 3. Poll until run completes (up to 3 min)
+      setStatus('loading', 'Booking in progress… (this takes ~30 s)');
+      const conclusion = await pollRunUntilDone(ghRepo, runId, ghHeaders);
+
+      if (conclusion === 'success') {
+        btn.textContent = '✓ Booked!';
+        setStatus('success', `✅ <strong>Confirmed booked!</strong><br>${studio} · ${dt} · ${instructor}`);
+      } else if (conclusion === 'failure') {
+        btn.disabled = false; btn.textContent = 'Try again →';
+        setStatus('error', `❌ Booking failed — the class may be full or already booked. <a href="https://github.com/${ghRepo}/actions/workflows/book.yml" target="_blank">See logs</a>.`);
       } else {
-        const body = await resp.text();
-        btn.disabled = false;
-        btn.textContent = 'Book this class →';
-        setStatus('error', `GitHub returned ${resp.status}: ${body}`);
+        setStatus('loading', `Run ${conclusion || 'timed out'}. Check <a href="https://github.com/${ghRepo}/actions/workflows/book.yml" target="_blank">GitHub Actions</a>.`);
       }
     } catch (err) {
-      btn.disabled = false;
-      btn.textContent = 'Book this class →';
+      btn.disabled = false; btn.textContent = 'Book this class →';
       setStatus('error', `Network error: ${err.message}`);
     }
   }
+
+  async function pollForRun(ghRepo, headers, maxWaitMs = 30000) {
+    const started = Date.now();
+    while (Date.now() - started < maxWaitMs) {
+      await sleep(3000);
+      try {
+        const r = await fetch(
+          `https://api.github.com/repos/${ghRepo}/actions/workflows/book.yml/runs?per_page=5&event=workflow_dispatch`,
+          { headers }
+        );
+        const data = await r.json();
+        const runs = (data.workflow_runs || []);
+        // Pick the most-recent run that started within the last 60 s
+        const cutoff = Date.now() - 60000;
+        const run = runs.find(ru => new Date(ru.created_at).getTime() > cutoff);
+        if (run) return run.id;
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  async function pollRunUntilDone(ghRepo, runId, headers, maxWaitMs = 180000) {
+    const started = Date.now();
+    while (Date.now() - started < maxWaitMs) {
+      await sleep(5000);
+      try {
+        const r = await fetch(
+          `https://api.github.com/repos/${ghRepo}/actions/runs/${runId}`,
+          { headers }
+        );
+        const run = await r.json();
+        if (run.status === 'completed') return run.conclusion;
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   function setStatus(type, msg) {
     const el = document.getElementById('status');

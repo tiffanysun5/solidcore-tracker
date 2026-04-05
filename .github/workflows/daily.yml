@@ -28,9 +28,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Install Playwright browsers
-        run: playwright install chromium --with-deps
-
       - name: Restore state cache
         uses: actions/cache@v4
         with:
@@ -41,10 +38,8 @@ jobs:
 
       - name: Run tracker
         env:
-          WELLHUB_EMAIL:       ${{ secrets.WELLHUB_EMAIL }}
-          WELLHUB_PASSWORD:    ${{ secrets.WELLHUB_PASSWORD }}
-          SMTP_USER:           ${{ secrets.SMTP_USER }}
-          SMTP_PASSWORD:       ${{ secrets.SMTP_PASSWORD }}
+          SMTP_USER:              ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD:          ${{ secrets.SMTP_PASSWORD }}
           APP_REPO:               ${{ secrets.APP_REPO }}
           WELLHUB_REFRESH_TOKEN:  ${{ secrets.WELLHUB_REFRESH_TOKEN }}
         run: |

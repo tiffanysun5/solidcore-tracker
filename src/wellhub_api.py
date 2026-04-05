@@ -395,6 +395,53 @@ query classSlotDetailsQuery($input: ClassSlotDetailsInput!) {
 }
 """
 
+# ── Already-booked dates ───────────────────────────────────────────────────
+
+CHECKIN_BOOKING_QUERY = """
+query attendanceCheckinBooking($input: AttendanceCheckinBookingInput) {
+  attendanceCheckinBooking(input: $input) {
+    uniqueAttendanceIdentifier
+    status
+    class {
+      slotId
+      occurDate
+    }
+  }
+}
+"""
+
+def get_booked_dates() -> set[date]:
+    """
+    Return the set of calendar dates (ET) for which the user already has a
+    RESERVED booking on Wellhub.  Used to skip those days in the digest.
+    """
+    try:
+        results = _gql([{
+            "operationName": "attendanceCheckinBooking",
+            "variables": {"input": {"showAllWalkInStatus": True, "inComponentFeedback": False}},
+            "query": CHECKIN_BOOKING_QUERY,
+        }])
+        bookings = results[0].get("data", {}).get("attendanceCheckinBooking", []) or []
+        booked: set[date] = set()
+        from zoneinfo import ZoneInfo
+        ny = ZoneInfo("America/New_York")
+        for b in bookings:
+            if b.get("status") not in ("RESERVED", "CHECKED_IN"):
+                continue
+            occur = (b.get("class") or {}).get("occurDate", "")
+            if occur:
+                try:
+                    dt = datetime.fromisoformat(occur.replace("Z", "+00:00")).astimezone(ny)
+                    booked.add(dt.date())
+                except Exception:
+                    pass
+        log.info("Already booked on %d date(s): %s", len(booked), sorted(booked))
+        return booked
+    except Exception as exc:
+        log.warning("Could not fetch booked dates: %s — proceeding without filter", exc)
+        return set()
+
+
 def _get_slot_details(slot_id: str) -> Optional[dict]:
     try:
         results = _gql([{

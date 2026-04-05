@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       class_ids:
-        description: "Comma-separated Wellhub class IDs to book (copy from email digest)"
+        description: "Comma-separated Wellhub slot IDs to book (copy from email digest)"
         required: true
         type: string
 
 jobs:
   book:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
@@ -22,17 +22,12 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Install Playwright browsers
-        run: playwright install chromium --with-deps
+        run: pip install requests
 
       - name: Book selected classes
         env:
-          WELLHUB_EMAIL:          ${{ secrets.WELLHUB_EMAIL }}
-          WELLHUB_PASSWORD:       ${{ secrets.WELLHUB_PASSWORD }}
           WELLHUB_REFRESH_TOKEN:  ${{ secrets.WELLHUB_REFRESH_TOKEN }}
-        run: python book.py --headless --ids "${{ inputs.class_ids }}"
+        run: python book.py --ids "${{ inputs.class_ids }}"
 
       - name: Upload booking results
         if: always()
@@ -42,5 +37,4 @@ jobs:
           path: |
             booking_results.json
             booking_failures.txt
-            debug_book_*.png
           if-no-files-found: ignore
