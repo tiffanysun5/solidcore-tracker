@@ -1,4 +1,4 @@
-name: Sync Wellhub → Google Calendar
+name: Sync Wellhub → Calendar
 
 on:
   schedule:
@@ -11,20 +11,29 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to commit calendar.ics back to repo
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
 
       - name: Install dependencies
-        run: pip install requests google-api-python-client google-auth
+        run: pip install requests beautifulsoup4 lxml
 
-      - name: Sync calendar
+      - name: Generate calendar.ics
         env:
-          WELLHUB_REFRESH_TOKEN:  ${{ secrets.WELLHUB_REFRESH_TOKEN }}
-          GOOGLE_CLIENT_ID:       ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET:   ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GOOGLE_REFRESH_TOKEN:   ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          WELLHUB_REFRESH_TOKEN: ${{ secrets.WELLHUB_REFRESH_TOKEN }}
         run: python sync_cal.py
+
+      - name: Commit updated calendar.ics
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/calendar.ics
+          git diff --cached --quiet || git commit -m "chore: update calendar.ics [skip ci]"
+          git push

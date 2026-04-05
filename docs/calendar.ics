@@ -1,0 +1,80 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Solidcore Tracker//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Solidcore Classes
+X-WR-TIMEZONE:America/New_York
+BEGIN:VEVENT
+UID:19e635d0-6b74-484c-b61a-a1c273893635@solidcore-tracker
+DTSTART;TZID=America/New_York:20260406T120500
+DTEND;TZID=America/New_York:20260406T125500
+SUMMARY:[solidcore] Signature50: Full Body
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:af2d1bf0-dc91-4d63-aa22-98703da7bec2@solidcore-tracker
+DTSTART;TZID=America/New_York:20260408T100500
+DTEND;TZID=America/New_York:20260408T105500
+SUMMARY:[solidcore] Signature50: Full Body
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:3dbd38d2-3425-469e-9d5e-4f775f0803e6@solidcore-tracker
+DTSTART;TZID=America/New_York:20260409T101500
+DTEND;TZID=America/New_York:20260409T110500
+SUMMARY:[solidcore] Signature50: Full Body | Dom Dolla + John Summit
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:d2958220-cb09-43db-8488-94cdbff9b9d5@solidcore-tracker
+DTSTART;TZID=America/New_York:20260412T130000
+DTEND;TZID=America/New_York:20260412T135000
+SUMMARY:[solidcore] Signature50: Full Body
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:dd341c94-c216-485d-bcf5-4a28bf52bb14@solidcore-tracker
+DTSTART;TZID=America/New_York:20260414T121500
+DTEND;TZID=America/New_York:20260414T130500
+SUMMARY:[solidcore] Signature50: Full Body
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:62235df3-5654-4aef-ae7c-236fc9222998@solidcore-tracker
+DTSTART;TZID=America/New_York:20260416T101500
+DTEND;TZID=America/New_York:20260416T110500
+SUMMARY:[solidcore] Signature50: Full Body
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:1d1b831b-426c-4bc5-b521-3e87fd47e4c2@solidcore-tracker
+DTSTART;TZID=America/New_York:20260417T110500
+DTEND;TZID=America/New_York:20260417T115500
+SUMMARY:[solidcore] Signature50: Full Body
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:1aa7edf5-09d2-4bdd-b83e-e9bba3985f73@solidcore-tracker
+DTSTART;TZID=America/New_York:20260419T161500
+DTEND;TZID=America/New_York:20260419T170500
+SUMMARY:[solidcore] Signature50: Full Body
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR

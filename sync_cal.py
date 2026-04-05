@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """
-Sync Wellhub bookings → Google Calendar.
+Sync Wellhub bookings → docs/calendar.ics (hosted on GitHub Pages).
 
-Run locally:   python sync_cal.py
-Run in CI:     python sync_cal.py  (needs GOOGLE_* env vars)
+Any calendar app (Google Calendar, Apple Calendar, Outlook) can subscribe to:
+  https://tiffanysun5.github.io/solidcore-tracker/calendar.ics
+
+No Google credentials or API keys needed — just a public URL.
+
+Run locally:  python sync_cal.py
+Run in CI:    python sync_cal.py  (needs WELLHUB_REFRESH_TOKEN)
 """
 
 from __future__ import annotations
 import logging
 import os
-import sys
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -24,24 +28,26 @@ if _env.exists():
             _k, _, _v = _line.partition("=")
             os.environ.setdefault(_k.strip(), _v.strip())
 
-def main():
-    missing = [k for k in ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN")
-               if not os.environ.get(k)]
-    if missing:
-        log.error("Missing env vars: %s — run setup_gcal.py first", ", ".join(missing))
-        sys.exit(1)
 
+def main():
     log.info("Fetching upcoming Wellhub bookings...")
     from src.wellhub_api import get_upcoming_bookings
     bookings = get_upcoming_bookings()
     log.info("  %d upcoming bookings found", len(bookings))
     for b in bookings:
-        log.info("  • %s  %s  %s", b.dt.strftime("%a %b %-d %-I:%M %p"), b.studio_name, b.class_name)
+        log.info("  • %s  %s  %s",
+                 b.dt.strftime("%a %b %-d %-I:%M %p"),
+                 b.studio_name.replace("[solidcore] ", ""),
+                 b.class_name)
 
-    log.info("Syncing to Google Calendar...")
-    from src.gcal import sync_calendar
-    created, deleted = sync_calendar(bookings)
-    log.info("Done: %d created, %d deleted", created, deleted)
+    log.info("Generating calendar.ics...")
+    from src.ical import generate_ics
+    ics_content = generate_ics(bookings)
+
+    out_path = Path(__file__).parent / "docs" / "calendar.ics"
+    out_path.write_text(ics_content, encoding="utf-8")
+    log.info("Written %d events to %s", len(bookings), out_path)
+
 
 if __name__ == "__main__":
     main()
