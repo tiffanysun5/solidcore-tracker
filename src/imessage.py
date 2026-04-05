@@ -6,14 +6,17 @@ Only works on macOS — silently skipped on Linux (GitHub Actions).
 from __future__ import annotations
 
 import logging
+import os
 import platform
 import subprocess
+import urllib.parse
 
 from src.filters import MatchedClass
 
 log = logging.getLogger(__name__)
 
 PHONE_NUMBER = "+15167105653"
+GITHUB_REPO  = os.getenv("APP_REPO", "tiffanysun5/solidcore-tracker")
 
 
 def send_imessage(matches: list[MatchedClass]) -> None:
@@ -23,30 +26,41 @@ def send_imessage(matches: list[MatchedClass]) -> None:
     if not matches:
         return
 
-    message = _build_message(matches)
-    _send(PHONE_NUMBER, message)
+    # Send one message per class so each has its own tappable link
+    header = f"🏋️ Solidcore — {len(matches)} matching class{'es' if len(matches) != 1 else ''}"
+    _send(PHONE_NUMBER, header)
 
-
-def _build_message(matches: list[MatchedClass]) -> str:
     preferred = [m for m in matches if m.preferred_time]
     other     = [m for m in matches if not m.preferred_time]
 
-    lines = [f"🏋️ Solidcore — {len(matches)} matching class{'es' if len(matches) != 1 else ''}"]
+    for m in preferred + other:
+        _send(PHONE_NUMBER, _class_message(m))
 
-    if preferred:
-        lines.append("\n⭐ Preferred (11am–2pm):")
-        for m in preferred:
-            muscles = " + ".join(m.all_muscles)
-            lines.append(f"  {m.slot.date_str} {m.slot.time_str} · {m.slot.studio[:7]} · {m.slot.instructor} · {muscles}")
 
-    if other:
-        lines.append("\nOther times:")
-        for m in other:
-            muscles = " + ".join(m.all_muscles)
-            lines.append(f"  {m.slot.date_str} {m.slot.time_str} · {m.slot.studio[:7]} · {m.slot.instructor} · {muscles}")
-
-    lines.append("\nCheck email to book →")
+def _class_message(m: MatchedClass) -> str:
+    muscles = " + ".join(m.all_muscles)
+    star    = "⭐ " if m.preferred_time else ""
+    lines   = [
+        f"{star}{m.slot.date_str} · {m.slot.time_str}",
+        f"{m.slot.studio} · {m.slot.instructor}",
+        f"{muscles}",
+        _book_url(m),
+    ]
     return "\n".join(lines)
+
+
+def _book_url(m: MatchedClass) -> str:
+    owner, _, repo_name = GITHUB_REPO.partition("/")
+    base   = f"https://{owner}.github.io/{repo_name}/book.html"
+    params = urllib.parse.urlencode({
+        "class_id":   m.slot.wellhub_class_id,
+        "studio":     m.slot.studio,
+        "instructor": m.slot.instructor,
+        "dt":         f"{m.slot.date_str} {m.slot.time_str}",
+        "muscles":    " + ".join(m.all_muscles),
+        "repo":       GITHUB_REPO,
+    })
+    return f"{base}?{params}"
 
 
 def _send(phone: str, message: str) -> None:
