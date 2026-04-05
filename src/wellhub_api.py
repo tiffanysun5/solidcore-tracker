@@ -504,36 +504,110 @@ query attendanceCheckinBooking($input: AttendanceCheckinBookingInput) {
 }
 """
 
-def get_booked_dates() -> set[date]:
+PROFILE_SCHEDULE_QUERY = "query profilePerformance($settings: JSONObject, $variables: JSONObject, $isFamilyMember: Boolean!, $includeCheckInBookingHistory: Boolean!, $maxChallengesSize: Int, $challengesSettings: JSONObject, $badgesSettings: JSONObject) @flow(name: \"profile\") {\n  profilePerformance(settings: $settings) {\n    header {\n      title\n      tag {\n        textTag {\n          key\n          params\n          __typename\n        }\n        events {\n          clickstream {\n            name\n            params\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      subtitle {\n        key\n        params\n        __typename\n      }\n      __typename\n    }\n    sections {\n      ...StatisticsFragment\n      ...StreaksFragment\n      ...ClassScheduleFragment\n      ...FavoritesFragment\n      ...RecentActivitiesFragment @skip(if: $includeCheckInBookingHistory)\n      ...ActivatedAppsFragment\n      ...FamilyMemberFragment @include(if: $isFamilyMember)\n      ...EligibleChallengesFragment\n      ...WellhubAiEntrypointFragment\n      ...BadgesFragment\n      ...CheckInBookingHistoryFragment @include(if: $includeCheckInBookingHistory)\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment StatisticsFragment on StatisticsProfilePerformance {\n  title {\n    key\n    params\n    __typename\n  }\n  sectionData {\n    checkInCount {\n      value\n      events {\n        clickstream {\n          name\n          params\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    statisticsEvents: events {\n      pageview {\n        name\n        params\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment StreaksFragment on StreaksProfilePerformance {\n  sectionData {\n    ... on StreaksSuccess {\n      visualState\n      streakCount\n      progressFilled\n      progressTotal\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment ClassScheduleFragment on ClassScheduleProfilePerformance {\n  title {\n    key\n    params\n    __typename\n  }\n  sectionData {\n    ... on ClassScheduleSuccess {\n      cards {\n        small\n        details {\n          name\n          place\n          time\n          __typename\n        }\n        date {\n          day\n          dayOfWeek\n          month\n          __typename\n        }\n        exploreRedirect {\n          startDate\n          endDate\n          __typename\n        }\n        link {\n          label {\n            key\n            params\n            __typename\n          }\n          __typename\n        }\n        uniqueAttendanceIdentifier\n        type\n        events {\n          clickstream {\n            name\n            params\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      events {\n        pageview {\n          name\n          params\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment FavoritesFragment on FavoritesProfilePerformance {\n  title {\n    key\n    params\n    __typename\n  }\n  sectionData {\n    ... on ListFavoritesSuccess {\n      favorites {\n        partnerId\n        name\n        logo\n        variant\n        events {\n          clickstream {\n            name\n            params\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      favoritesEvents: events {\n        pageview {\n          name\n          params\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment RecentActivitiesFragment on RecentActivitiesProfilePerformance {\n  title {\n    key\n    params\n    __typename\n  }\n  sectionData(variables: $variables) {\n    ... on RecentActivitiesSuccess {\n      recentItems: items {\n        id\n        type {\n          attendanceType\n          iconType\n          description {\n            key\n            params\n            __typename\n          }\n          __typename\n        }\n        avatarUrl\n        partnerId\n        title\n        subtitle\n        datetime\n        events {\n          clickstream {\n            name\n            params\n            __typename\n          }\n          __typename\n        }\n        ratingLink {\n          label {\n            key\n            __typename\n          }\n          events {\n            clickstream {\n              name\n              params\n              __typename\n            }\n            __typename\n          }\n          __typename\n        }\n        productId\n        isPersonalTrainer\n        partnerType\n        transactionalId\n        __typename\n      }\n      recentEvents: events {\n        pageview {\n          name\n          params\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment ActivatedAppsFragment on ActivatedAppsProfilePerformance {\n  title {\n    key\n    params\n    __typename\n  }\n  sectionData {\n    title {\n      key\n      params\n      __typename\n    }\n    description {\n      key\n      params\n      __typename\n    }\n    activatedAppsItems: items {\n      id\n      name\n      slug\n      logoUrl\n      mainCategory\n      events {\n        clickstream {\n          name\n          params\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    action {\n      label {\n        key\n        params\n        __typename\n      }\n      events {\n        clickstream {\n          name\n          params\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    activatedAppsEvents: events {\n      pageview {\n        name\n        params\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment FamilyMemberFragment on FamilyMemberProfilePerformance {\n  title {\n    key\n    params\n    __typename\n  }\n  sectionData {\n    hasAvailable\n    fmSubscriptionsAvailable\n    __typename\n  }\n  __typename\n}\n\nfragment EligibleChallengesFragment on ListEligibleChallengesProfilePerformance {\n  title {\n    key\n    params\n    __typename\n  }\n  sectionData(\n    maxChallengesSize: $maxChallengesSize\n    challengesSettings: $challengesSettings\n  ) {\n    ... on ListEligibleChallengesSuccess {\n      eligibleChallenges {\n        challengeId\n        imageUrl\n        promotedBy\n        creatorName\n        dateStatus {\n          label {\n            ... on Label {\n              value\n              __typename\n            }\n            ... on Translation {\n              key\n              params\n              __typename\n            }\n            __typename\n          }\n          __typename\n        }\n        translatableTitle {\n          ... on Label {\n            value\n            __typename\n          }\n          ... on Translation {\n            key\n            __typename\n          }\n          __typename\n        }\n        status {\n          label {\n            key\n            params\n            __typename\n          }\n          value\n          variant\n          __typename\n        }\n        __typename\n      }\n      showBanner\n      ...HighlightedChallengeFragment\n      ...ParticipatingChallengesFragment\n      ...NextMovesChallengesFragment\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment HighlightedChallengeFragment on ListEligibleChallengesSuccess {\n  highlightedChallenge {\n    challengeId\n    translatableTitle {\n      ... on Label {\n        value\n        __typename\n      }\n      ... on Translation {\n        key\n        __typename\n      }\n      __typename\n    }\n    imageUrl\n    promotedBy\n    creatorName\n    goal\n    totalParticipants\n    type\n    metric\n    isNewChallenge\n    __typename\n  }\n  __typename\n}\n\nfragment ParticipatingChallengesFragment on ListEligibleChallengesSuccess {\n  participatingChallenges {\n    challengeId\n    translatableTitle {\n      ... on Label {\n        value\n        __typename\n      }\n      ... on Translation {\n        key\n        __typename\n      }\n      __typename\n    }\n    avatarUrl\n    promotedBy\n    creatorName\n    status\n    dateStatus {\n      daysLeft\n      hoursLeft\n      __typename\n    }\n    goal\n    currentScore\n    metric\n    progressPercentage\n    goalAchieved\n    progressBarColors {\n      initialColor\n      finalColor\n      __typename\n    }\n    __typename\n  }\n  showParticipatingSeeAll\n  __typename\n}\n\nfragment NextMovesChallengesFragment on ListEligibleChallengesSuccess {\n  nextMovesChallenges {\n    challengeId\n    translatableTitle {\n      ... on Label {\n        value\n        __typename\n      }\n      ... on Translation {\n        key\n        __typename\n      }\n      __typename\n    }\n    avatarUrl\n    promotedBy\n    creatorName\n    status\n    isNewChallenge\n    dateStatus {\n      daysLeft\n      hoursLeft\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment WellhubAiEntrypointFragment on WellhubAiEntrypointProfilePerformance {\n  title {\n    key\n    __typename\n  }\n  sectionData {\n    isAvailable\n    __typename\n  }\n  __typename\n}\n\nfragment BadgesFragment on BadgesProfilePerformance {\n  title {\n    key\n    __typename\n  }\n  sectionData(badgesSettings: $badgesSettings) {\n    isAvailable\n    badges {\n      id\n      title\n      imageUrl\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment CheckInBookingHistoryActionNavigationFragment on CheckInBookingHistoryActionNavigation {\n  label {\n    ...TextFragment\n    __typename\n  }\n  methodType\n  screenName\n  icon\n  enabled\n  trackData {\n    name\n    params\n    __typename\n  }\n  params\n  __typename\n}\n\nfragment CheckInBookingHistoryActionGoBackFragment on CheckInBookingHistoryActionGoBack {\n  label {\n    ...TextFragment\n    __typename\n  }\n  enabled\n  trackData {\n    name\n    params\n    __typename\n  }\n  __typename\n}\n\nfragment TextFragment on Text {\n  __typename\n  value {\n    __typename\n    ... on Translation {\n      __typename\n      namespace\n      key\n      params\n    }\n    ... on Label {\n      __typename\n      value\n    }\n  }\n  accessibilityHint {\n    __typename\n    ... on Translation {\n      __typename\n      namespace\n      key\n      params\n    }\n    ... on Label {\n      __typename\n      value\n    }\n  }\n  accessibilityLabel {\n    __typename\n    ... on Translation {\n      __typename\n      namespace\n      key\n      params\n    }\n    ... on Label {\n      __typename\n      value\n    }\n  }\n  accessibilityRole\n}\n\nfragment CheckInBookingHistoryItemFragment on CheckInBookingHistoryItem {\n  id\n  actionItem {\n    ...CheckInBookingHistoryActionGoBackFragment\n    ...CheckInBookingHistoryActionNavigationFragment\n    __typename\n  }\n  actionLink {\n    ...CheckInBookingHistoryActionGoBackFragment\n    ...CheckInBookingHistoryActionNavigationFragment\n    __typename\n  }\n  actionAvatar {\n    ...CheckInBookingHistoryActionNavigationFragment\n    __typename\n  }\n  attendance {\n    id\n    name {\n      ...TextFragment\n      __typename\n    }\n    icon\n    __typename\n  }\n  date {\n    icon\n    text {\n      ...TextFragment\n      __typename\n    }\n    __typename\n  }\n  product {\n    name {\n      ...TextFragment\n      __typename\n    }\n    __typename\n  }\n  partner {\n    name {\n      ...TextFragment\n      __typename\n    }\n    logo\n    __typename\n  }\n  tag {\n    label {\n      ...TextFragment\n      __typename\n    }\n    type\n    __typename\n  }\n  __typename\n}\n\nfragment CheckInBookingHistoryFragment on CheckInBookingHistoryProfilePerformance {\n  title {\n    key\n    params\n    namespace\n    __typename\n  }\n  sectionData(settings: $variables) {\n    items {\n      ...CheckInBookingHistoryItemFragment\n      __typename\n    }\n    __typename\n  }\n  __typename\n}"
+
+PROFILE_VARS = {'settings': {'stats': True, 'streaks': False, 'schedule': True, 'badges': True, 'challenge_list': True, 'wellhub_ai_entrypoint': True, 'activated_apps': True, 'favorites': True, 'recent': True, 'checkin_booking_history': True}, 'variables': {'enable_recents': True, 'minutes_to_rate': 125, 'days_to_expiration': 7, 'recents': {'enable': True, 'minutes_to_rate': 125, 'days_to_expiration': 7, 'days_to_renew': 90}, 'stimulus': {'enable': True, 'minutes_to_rate': 125, 'days_to_expiration': 7, 'days_to_renew': 90}}, 'isFamilyMember': True, 'includeCheckInBookingHistory': True, 'maxChallengesSize': 3, 'challengesSettings': {'enableHighlightedChallenge': True, 'participatingMaxSize': 3, 'maxDaysDiffForChallengesEnded': 3, 'enableChallengeProfileSections': True, 'nextMovesMaxSize': 5, 'daysAfterChallengeStart': 4}, 'badgesSettings': {'enableBadgesCarousel': True, 'maxBadgesSize': 5}}
+@dataclass
+class WellhubBooking:
+    attendance_id: str
+    class_name: str
+    studio_name: str   # e.g. "[solidcore] Chelsea, NY"
+    dt: datetime       # full datetime in ET
+    duration_mins: int = 50
+    class_id: str = ""
+
+def get_upcoming_bookings() -> list[WellhubBooking]:
     """
-    Return the set of calendar dates (ET) for which the user already has a
-    RESERVED booking on Wellhub.  Used to skip those days in the digest.
+    Return all upcoming RESERVED bookings from the profilePerformance schedule.
     """
     try:
         results = _gql([{
-            "operationName": "attendanceCheckinBooking",
-            "variables": {"input": {"showAllWalkInStatus": True, "inComponentFeedback": False}},
-            "query": CHECKIN_BOOKING_QUERY,
+            "operationName": "profilePerformance",
+            "variables": PROFILE_VARS,
+            "query": PROFILE_SCHEDULE_QUERY,
         }])
-        bookings = results[0].get("data", {}).get("attendanceCheckinBooking", []) or []
-        booked: set[date] = set()
+        sections = (results[0].get("data", {})
+                    .get("profilePerformance", {})
+                    .get("sections", []))
+
+        bookings: list[WellhubBooking] = []
         from zoneinfo import ZoneInfo
         ny = ZoneInfo("America/New_York")
-        for b in bookings:
-            if b.get("status") not in ("RESERVED", "CHECKED_IN"):
-                continue
-            occur = (b.get("class") or {}).get("occurDate", "")
-            if occur:
+        now = datetime.now(tz=ny)
+
+        for section in sections:
+            cards = (section.get("sectionData", {}) or {}).get("cards", []) or []
+            for card in cards:
+                uid = card.get("uniqueAttendanceIdentifier")
+                if not uid:
+                    continue  # day with no booking
+                if card.get("type") != "ReservedClassScheduleCard":
+                    continue
+
+                details = card.get("details") or {}
+                date_info = card.get("date") or {}
+
+                day   = int(date_info.get("day", 0))
+                month_str = date_info.get("month", "")  # e.g. "APR"
+                time_str  = details.get("time", "")     # e.g. "12:00 PM"
+
+                if not day or not month_str or not time_str:
+                    continue
+
+                # Parse month name → number
+                import calendar as cal_mod
+                abbr_map = {m.upper(): i for i, m in enumerate(cal_mod.month_abbr) if m}
+                month_num = abbr_map.get(month_str[:3].upper(), 0)
+                if not month_num:
+                    continue
+
+                # Infer year: use current year, bump to next if date already past
+                year = now.year
                 try:
-                    dt = datetime.fromisoformat(occur.replace("Z", "+00:00")).astimezone(ny)
-                    booked.add(dt.date())
+                    candidate = datetime(year, month_num, day, tzinfo=ny)
+                    if candidate.date() < now.date():
+                        candidate = datetime(year + 1, month_num, day, tzinfo=ny)
+
+                    # Parse time
+                    from datetime import time as dtime
+                    import re
+                    m = re.match(r'(\d+):(\d+)\s*(AM|PM)', time_str.strip(), re.I)
+                    if not m:
+                        continue
+                    h, mi, ampm = int(m.group(1)), int(m.group(2)), m.group(3).upper()
+                    if ampm == "PM" and h != 12:
+                        h += 12
+                    elif ampm == "AM" and h == 12:
+                        h = 0
+                    dt = candidate.replace(hour=h, minute=mi, second=0, microsecond=0)
                 except Exception:
-                    pass
-        log.info("Already booked on %d date(s): %s", len(booked), sorted(booked))
-        return booked
+                    continue
+
+                params = card.get("events", {}).get("clickstream", {}).get("params", {})
+                class_id = str(params.get("class_id", ""))
+
+                bookings.append(WellhubBooking(
+                    attendance_id=uid,
+                    class_name=details.get("name", ""),
+                    studio_name=details.get("place", ""),
+                    dt=dt,
+                    class_id=class_id,
+                ))
+
+        log.info("Found %d upcoming Wellhub bookings", len(bookings))
+        return bookings
+
     except Exception as exc:
-        log.warning("Could not fetch booked dates: %s — proceeding without filter", exc)
-        return set()
+        log.warning("Could not fetch upcoming bookings: %s", exc)
+        return []
+
+
+def get_booked_dates() -> set[date]:
+    """Return calendar dates (ET) with an upcoming RESERVED Wellhub booking."""
+    bookings = get_upcoming_bookings()
+    booked = {b.dt.date() for b in bookings}
+    log.info("Already booked on %d date(s): %s", len(booked), sorted(booked))
+    return booked
 
 
 def _get_slot_details(slot_id: str) -> Optional[dict]:

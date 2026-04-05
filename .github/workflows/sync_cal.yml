@@ -1,0 +1,30 @@
+name: Sync Wellhub → Google Calendar
+
+on:
+  schedule:
+    - cron: "30 12 * * *"   # 8:30am ET daily
+  workflow_dispatch: {}
+  workflow_run:
+    workflows: ["Book selected classes"]
+    types: [completed]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install requests google-api-python-client google-auth
+
+      - name: Sync calendar
+        env:
+          WELLHUB_REFRESH_TOKEN:  ${{ secrets.WELLHUB_REFRESH_TOKEN }}
+          GOOGLE_CLIENT_ID:       ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET:   ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN:   ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+        run: python sync_cal.py
