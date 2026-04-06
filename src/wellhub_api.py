@@ -515,11 +515,46 @@ class WellhubBooking:
     dt: datetime       # full datetime in ET
     duration_mins: int = 50
     class_id: str = ""
+    completed: bool = False   # True = past check-in, False = upcoming reserved
+
+
+def _parse_time_str(time_str: str) -> tuple[int, int] | None:
+    """Parse '12:00 PM' or '11:05 AM' → (hour24, minute). Returns None on failure."""
+    import re
+    m = re.match(r'(\d+):(\d+)\s*(AM|PM)', time_str.strip(), re.I)
+    if not m:
+        return None
+    h, mi, ampm = int(m.group(1)), int(m.group(2)), m.group(3).upper()
+    if ampm == "PM" and h != 12:
+        h += 12
+    elif ampm == "AM" and h == 12:
+        h = 0
+    return h, mi
+
+
+def _label_value(node: dict) -> str:
+    """Extract string from a TextFragment { value { ... on Label { value } } } node."""
+    try:
+        v = node["value"]
+        if isinstance(v, dict):
+            return v.get("value", "") or ""
+        return str(v)
+    except Exception:
+        return ""
+
 
 def get_upcoming_bookings() -> list[WellhubBooking]:
     """
-    Return all upcoming RESERVED bookings from the profilePerformance schedule.
+    Return upcoming RESERVED bookings + recent Solidcore completed check-ins
+    from the same profilePerformance call (used for quota calculation).
     """
+    import calendar as cal_mod
+    from zoneinfo import ZoneInfo
+
+    ny  = ZoneInfo("America/New_York")
+    now = datetime.now(tz=ny)
+    abbr_map = {m.upper(): i for i, m in enumerate(cal_mod.month_abbr) if m}
+
     try:
         results = _gql([{
             "operationName": "profilePerformance",
@@ -531,81 +566,120 @@ def get_upcoming_bookings() -> list[WellhubBooking]:
                     .get("sections", []))
 
         bookings: list[WellhubBooking] = []
-        from zoneinfo import ZoneInfo
-        ny = ZoneInfo("America/New_York")
-        now = datetime.now(tz=ny)
 
         for section in sections:
-            cards = (section.get("sectionData", {}) or {}).get("cards", []) or []
-            for card in cards:
-                uid = card.get("uniqueAttendanceIdentifier")
-                if not uid:
-                    continue  # day with no booking
-                if card.get("type") != "ReservedClassScheduleCard":
-                    continue
+            typename = section.get("__typename", "")
 
-                details = card.get("details") or {}
-                date_info = card.get("date") or {}
-
-                day   = int(date_info.get("day", 0))
-                month_str = date_info.get("month", "")  # e.g. "APR"
-                time_str  = details.get("time", "")     # e.g. "12:00 PM"
-
-                if not day or not month_str or not time_str:
-                    continue
-
-                # Parse month name → number
-                import calendar as cal_mod
-                abbr_map = {m.upper(): i for i, m in enumerate(cal_mod.month_abbr) if m}
-                month_num = abbr_map.get(month_str[:3].upper(), 0)
-                if not month_num:
-                    continue
-
-                # Infer year: use current year, bump to next if date already past
-                year = now.year
-                try:
-                    candidate = datetime(year, month_num, day, tzinfo=ny)
-                    if candidate.date() < now.date():
-                        candidate = datetime(year + 1, month_num, day, tzinfo=ny)
-
-                    # Parse time
-                    from datetime import time as dtime
-                    import re
-                    m = re.match(r'(\d+):(\d+)\s*(AM|PM)', time_str.strip(), re.I)
-                    if not m:
+            # ── Upcoming reserved classes ──────────────────────────────────
+            if typename == "ClassScheduleProfilePerformance":
+                cards = (section.get("sectionData", {}) or {}).get("cards", []) or []
+                for card in cards:
+                    uid = card.get("uniqueAttendanceIdentifier")
+                    if not uid or card.get("type") != "ReservedClassScheduleCard":
                         continue
-                    h, mi, ampm = int(m.group(1)), int(m.group(2)), m.group(3).upper()
-                    if ampm == "PM" and h != 12:
-                        h += 12
-                    elif ampm == "AM" and h == 12:
-                        h = 0
-                    dt = candidate.replace(hour=h, minute=mi, second=0, microsecond=0)
-                except Exception:
-                    continue
+                    details   = card.get("details") or {}
+                    date_info = card.get("date") or {}
+                    day       = int(date_info.get("day", 0))
+                    month_str = date_info.get("month", "")
+                    time_str  = details.get("time", "")
+                    if not (day and month_str and time_str):
+                        continue
+                    month_num = abbr_map.get(month_str[:3].upper(), 0)
+                    if not month_num:
+                        continue
+                    parsed = _parse_time_str(time_str)
+                    if not parsed:
+                        continue
+                    h, mi = parsed
+                    try:
+                        candidate = datetime(now.year, month_num, day, tzinfo=ny)
+                        if candidate.date() < now.date():
+                            candidate = datetime(now.year + 1, month_num, day, tzinfo=ny)
+                        dt = candidate.replace(hour=h, minute=mi, second=0, microsecond=0)
+                    except Exception:
+                        continue
+                    params   = card.get("events", {}).get("clickstream", {}).get("params", {})
+                    class_id = str(params.get("class_id", ""))
+                    bookings.append(WellhubBooking(
+                        attendance_id=uid,
+                        class_name=details.get("name", ""),
+                        studio_name=details.get("place", ""),
+                        dt=dt,
+                        class_id=class_id,
+                        completed=False,
+                    ))
 
-                params = card.get("events", {}).get("clickstream", {}).get("params", {})
-                class_id = str(params.get("class_id", ""))
+            # ── Completed check-in history (for accurate weekly quota) ──────
+            elif typename == "CheckInBookingHistoryProfilePerformance":
+                items = (section.get("sectionData", {}) or {}).get("items", []) or []
+                for item in items:
+                    # Partner name tells us if it's solidcore
+                    partner_node = (item.get("partner") or {}).get("name") or {}
+                    partner_name = _label_value(partner_node)
+                    if "[solidcore]" not in partner_name.lower():
+                        continue  # skip non-Solidcore check-ins for quota
 
-                bookings.append(WellhubBooking(
-                    attendance_id=uid,
-                    class_name=details.get("name", ""),
-                    studio_name=details.get("place", ""),
-                    dt=dt,
-                    class_id=class_id,
-                ))
+                    # Date text: "Apr 3 • 11:05 AM"
+                    date_node = (item.get("date") or {}).get("text") or {}
+                    date_text = _label_value(date_node)  # e.g. "Apr 3 • 11:05 AM"
+                    if not date_text or "•" not in date_text:
+                        continue
 
-        log.info("Found %d upcoming Wellhub bookings", len(bookings))
+                    date_part, _, time_part = date_text.partition("•")
+                    date_part = date_part.strip()   # "Apr 3"
+                    time_part = time_part.strip()   # "11:05 AM"
+
+                    # Parse "Apr 3"
+                    import re
+                    dm = re.match(r'([A-Za-z]+)\s+(\d+)', date_part)
+                    if not dm:
+                        continue
+                    month_num = abbr_map.get(dm.group(1)[:3].upper(), 0)
+                    day       = int(dm.group(2))
+                    if not month_num or not day:
+                        continue
+
+                    parsed = _parse_time_str(time_part)
+                    if not parsed:
+                        continue
+                    h, mi = parsed
+
+                    # Infer year: assume recent past (within last 6 months)
+                    try:
+                        candidate = datetime(now.year, month_num, day, h, mi, tzinfo=ny)
+                        if candidate > now:
+                            candidate = datetime(now.year - 1, month_num, day, h, mi, tzinfo=ny)
+                    except Exception:
+                        continue
+
+                    uid        = str(item.get("id", ""))
+                    # product.name has the class name; attendance is a list so skip it
+                    product_node = (item.get("product") or {}).get("name") or {}
+                    class_name   = _label_value(product_node) or partner_name
+
+                    bookings.append(WellhubBooking(
+                        attendance_id=uid,
+                        class_name=class_name,
+                        studio_name=partner_name,
+                        dt=candidate,
+                        completed=True,
+                    ))
+
+        upcoming  = [b for b in bookings if not b.completed]
+        completed = [b for b in bookings if b.completed]
+        log.info("Found %d upcoming bookings + %d recent Solidcore check-ins",
+                 len(upcoming), len(completed))
         return bookings
 
     except Exception as exc:
-        log.warning("Could not fetch upcoming bookings: %s", exc)
+        log.warning("Could not fetch bookings: %s", exc)
         return []
 
 
 def get_booked_dates() -> set[date]:
     """Return calendar dates (ET) with an upcoming RESERVED Wellhub booking."""
     bookings = get_upcoming_bookings()
-    booked = {b.dt.date() for b in bookings}
+    booked = {b.dt.date() for b in bookings if not b.completed}
     log.info("Already booked on %d date(s): %s", len(booked), sorted(booked))
     return booked
 

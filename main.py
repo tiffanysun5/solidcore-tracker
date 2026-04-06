@@ -52,12 +52,13 @@ def main() -> None:
     focus_map = fetch_muscle_focus()
     log.info("  Got %d days of muscle focus data", len(focus_map))
 
-    # ── 2. Already-booked classes (full 14-day window) ────────────────────
-    log.info("Step 2: Fetching upcoming bookings")
+    # ── 2. Bookings: upcoming reserved + recent completed (for quota) ────────
+    log.info("Step 2: Fetching bookings + check-in history")
     from src.wellhub_api import get_upcoming_bookings, get_schedule
-    bookings = get_upcoming_bookings()
-    booked_dates = {b.dt.date() for b in bookings}
-    log.info("  %d upcoming bookings on dates: %s", len(bookings), sorted(booked_dates))
+    all_bookings     = get_upcoming_bookings()
+    upcoming_bookings = [b for b in all_bookings if not b.completed]
+    booked_dates      = {b.dt.date() for b in upcoming_bookings}
+    log.info("  %d upcoming bookings on dates: %s", len(upcoming_bookings), sorted(booked_dates))
 
     # ── 3. Wellhub schedule (14-day window) ───────────────────────────────
     log.info("Step 3: Fetching Wellhub schedule")
@@ -67,7 +68,7 @@ def main() -> None:
     # ── 4. Filter — skip already-booked days ─────────────────────────────
     log.info("Step 4: Applying filters")
     from src.filters import apply_filters
-    matches = apply_filters(slots, focus_map, booked_dates=booked_dates)
+    matches = apply_filters(slots, focus_map, booked_dates=booked_dates)  # uses upcoming only
     log.info("  %d classes match all criteria", len(matches))
 
     # ── 5. The "new" day = today + 14 (just opened this morning) ─────────
@@ -82,10 +83,11 @@ def main() -> None:
 
     if args.no_email:
         log.info("--no-email: printing to stdout")
-        _print_digest(matches, bookings, new_day)
+        _print_digest(matches, upcoming_bookings, new_day)
     else:
         log.info("Step 5: Sending email digest to %s", NOTIFY_EMAIL)
-        send_digest(matches, bookings, new_day, NOTIFY_EMAIL)
+        # Pass all_bookings (upcoming + completed) so quota counts past check-ins too
+        send_digest(matches, all_bookings, upcoming_bookings, new_day, NOTIFY_EMAIL)
 
     log.info("Done.")
 

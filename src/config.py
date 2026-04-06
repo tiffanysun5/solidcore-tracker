@@ -21,6 +21,10 @@ TARGET_MUSCLES = {"Center Glutes", "Outer Glutes", "Leg Wrap"}
 PREFERRED_START_HOUR = 11
 PREFERRED_END_HOUR   = 14   # exclusive
 
+# Backup window: 9am–7pm (anything outside this is excluded entirely)
+BACKUP_START_HOUR = 9
+BACKUP_END_HOUR   = 19  # exclusive (7pm cutoff)
+
 BOOKING_WINDOW_DAYS = 14
 
 NOTIFY_EMAIL = "tiffanysun27@gmail.com"

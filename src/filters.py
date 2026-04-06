@@ -13,7 +13,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from src.config import STUDIOS, TARGET_MUSCLES, PREFERRED_START_HOUR, PREFERRED_END_HOUR
+from src.config import STUDIOS, TARGET_MUSCLES, PREFERRED_START_HOUR, PREFERRED_END_HOUR, BACKUP_START_HOUR, BACKUP_END_HOUR
 from src.muscle_focus import muscles_for_date
 from src.wellhub_api import ClassSlot
 
@@ -92,7 +92,15 @@ def apply_filters(
             )
             continue
 
-        # 3. Time preference flag (not a filter — all times are shown)
+        # 3. Hard time-window filter: 9am–7pm only
+        if not _is_in_window(slot.dt):
+            log.debug(
+                "Slot %s at %s is outside 9am–7pm window — skipping",
+                slot.wellhub_class_id, slot.time_str,
+            )
+            continue
+
+        # 4. Time preference flag (not a filter — preferred = 11am–2pm)
         preferred = _is_preferred_time(slot.dt)
 
         slot.muscles = matched_muscles
@@ -127,6 +135,11 @@ def _matching_muscles(day_muscles: list[str]) -> list[str]:
     """Return TARGET_MUSCLES that appear in today's muscle focus list."""
     day_lower = {m.lower() for m in day_muscles}
     return [t for t in TARGET_MUSCLES if t.lower() in day_lower]
+
+
+def _is_in_window(dt: datetime) -> bool:
+    """Return True if the class falls within the 9am–7pm allowed window."""
+    return BACKUP_START_HOUR <= dt.hour < BACKUP_END_HOUR
 
 
 def _is_preferred_time(dt: datetime) -> bool:
