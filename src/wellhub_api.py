@@ -676,6 +676,72 @@ def get_upcoming_bookings() -> list[WellhubBooking]:
         return []
 
 
+def get_extra_slots() -> list[ClassSlot]:
+    """Fetch TODAY's classes from EXTRA_STUDIOS (Nofar, CorePower) as same-day backup."""
+    from src.config import EXTRA_STUDIOS, BACKUP_START_HOUR, BACKUP_END_HOUR
+    slots: list[ClassSlot] = []
+    today = datetime.now(timezone.utc).date()
+
+    for studio_name, cfg in EXTRA_STUDIOS.items():
+        partner_id   = cfg["partner_id"]
+        class_filter = cfg.get("class_filter")
+        current = today
+        cutoff  = today  # only fetch today
+        while current <= cutoff:
+            start = datetime(current.year, current.month, current.day, 4, 0, 0, tzinfo=timezone.utc)
+            end   = start + timedelta(hours=23, minutes=59, seconds=59)
+            try:
+                results = _gql([{
+                    "operationName": "partnerClassSchedule",
+                    "variables": {
+                        "partnerId": partner_id,
+                        "filters": {
+                            "startDate": start.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                            "endDate":   end.strftime("%Y-%m-%dT%H:%M:%S.999Z"),
+                        },
+                        "deviceLocation": {"coordinates": [LAT, LNG], "type": "shared"},
+                    },
+                    "query": SCHEDULE_QUERY,
+                }])
+                items = (results[0].get("data", {})
+                         .get("partnerClassSchedule", {})
+                         .get("items", []))
+                for item in items:
+                    if item.get("isDisabled"):
+                        continue
+                    class_name = item.get("name", "")
+                    if class_filter and class_filter.lower() not in class_name.lower():
+                        continue
+                    instructors = item.get("instructors", [])
+                    instructor  = (instructors[0]["name"].split(" - ")[0].strip()
+                                   if instructors else "")
+                    dt_raw = item.get("date", "")
+                    try:
+                        dt = datetime.fromisoformat(dt_raw.replace("Z", "+00:00"))
+                        from zoneinfo import ZoneInfo
+                        dt = dt.astimezone(ZoneInfo("America/New_York"))
+                    except Exception:
+                        current += timedelta(days=1)
+                        continue
+                    if not (BACKUP_START_HOUR <= dt.hour < BACKUP_END_HOUR):
+                        continue
+                    slot = ClassSlot(
+                        wellhub_class_id = item.get("id", ""),
+                        class_id_gql     = str(item.get("classId", "")),
+                        partner_id       = partner_id,
+                        studio           = studio_name,
+                        instructor       = instructor,
+                        dt               = dt,
+                    )
+                    slot._class_name = class_name  # stash for display
+                    slots.append(slot)
+            except Exception as exc:
+                log.debug("Extra schedule fetch error %s %s: %s", studio_name, current, exc)
+            current += timedelta(days=1)
+        log.info("Extra studio %s: %d slots", studio_name, sum(1 for s in slots if s.studio == studio_name))
+    return slots
+
+
 def get_booked_dates() -> set[date]:
     """Return calendar dates (ET) with an upcoming RESERVED Wellhub booking."""
     bookings = get_upcoming_bookings()

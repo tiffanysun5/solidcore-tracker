@@ -62,8 +62,10 @@ def send_digest(
     upcoming_bookings: list,
     new_day:           date,
     to_email:          str,
+    extra_slots:       list | None = None,
 ) -> None:
-    subject, html_body = _build_email(matches, all_bookings, upcoming_bookings, new_day)
+    subject, html_body = _build_email(matches, all_bookings, upcoming_bookings, new_day,
+                                      extra_slots or [])
     _send(to_email, subject, html_body)
 
 
@@ -72,7 +74,9 @@ def _build_email(
     all_bookings:      list,
     upcoming_bookings: list,
     new_day:           date,
+    extra_slots:       list | None = None,
 ) -> tuple[str, str]:
+    extra_slots = extra_slots or []
 
     from zoneinfo import ZoneInfo
     ny    = ZoneInfo("America/New_York")
@@ -149,6 +153,11 @@ def _build_email(
                                f"No matching classes on {new_day.strftime('%a %b %-d')} within 9am–7pm.")
     other_sec = _match_section(other_matches, "Other open days") if other_matches else ""
 
+    booked_dates_set = {b.dt.date() for b in upcoming_bookings}
+    # Show extra studios for TODAY only (as a same-day backup option)
+    extra_today = [s for s in extra_slots if s.date == today]
+    extra_sec = _extra_section(extra_today, booked_dates=booked_dates_set) if extra_today else ""
+
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>{CSS}</style></head>
 <body><div class="wrap">
@@ -156,6 +165,7 @@ def _build_email(
   {booked_sec}
   {new_sec}
   {other_sec}
+  {extra_sec}
   <div class="ftr">solidcore-tracker · muscle focus, instructor &amp; time (9am–7pm)</div>
 </div></body></html>"""
 
@@ -228,6 +238,79 @@ def _book_btn(m: MatchedClass) -> str:
     })
     url = f"https://{owner}.github.io/{repo}/book.html?{params}"
     return f'<a class="book-btn" href="{url}">Book →</a>'
+
+
+# ── Extra studios section ──────────────────────────────────────────────────
+
+def _extra_section(slots: list, booked_dates: set | None = None) -> str:
+    """Compact table of Nofar / CorePower Sculpt — preferred times first, max 3/day."""
+    if not slots:
+        return ""
+
+    from src.config import PREFERRED_START_HOUR, PREFERRED_END_HOUR
+    booked_dates = booked_dates or set()
+
+    # Filter to unbooked days only, sort preferred first then backup
+    filtered = [s for s in slots if s.date not in booked_dates]
+    filtered.sort(key=lambda s: (s.studio, s.date, 0 if PREFERRED_START_HOUR <= s.dt.hour < PREFERRED_END_HOUR else 1, s.dt))
+
+    # Max 3 per studio per day
+    from collections import defaultdict
+    counts: dict[tuple, int] = defaultdict(int)
+    shown = []
+    for s in filtered:
+        key = (s.studio, s.date)
+        if counts[key] < 3:
+            shown.append(s)
+            counts[key] += 1
+
+    if not shown:
+        return ""
+
+    from collections import defaultdict as dd
+    by_studio: dict[str, list] = dd(list)
+    for s in shown:
+        by_studio[s.studio].append(s)
+
+    rows = ""
+    for studio, studio_slots in by_studio.items():
+        rows += (f'<tr><td colspan="4" style="padding:5px 8px 3px;font-size:10px;'
+                 f'font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
+                 f'color:#6b7280;background:#f9fafb;border-bottom:1px solid #e5e7eb">'
+                 f'{studio}</td></tr>')
+        for s in studio_slots:
+            class_name = getattr(s, '_class_name', '') or s.studio
+            is_pref = PREFERRED_START_HOUR <= s.dt.hour < PREFERRED_END_HOUR
+            time_color = "#111" if is_pref else "#6b7280"
+            instr = (f'  <span style="color:#9ca3af;font-size:11px">· {s.instructor}</span>'
+                     if s.instructor else '')
+            owner, _, repo = GITHUB_REPO.partition("/")
+            params = urllib.parse.urlencode({
+                "class_id": s.wellhub_class_id, "class_id_gql": s.class_id_gql,
+                "partner_id": s.partner_id, "studio": s.studio,
+                "instructor": s.instructor,
+                "dt": f"{s.date_str} {s.time_str}", "muscles": "", "repo": GITHUB_REPO,
+            })
+            book_url = f"https://{owner}.github.io/{repo}/book.html?{params}"
+            btn = f'<a class="book-btn" href="{book_url}">Book →</a>'
+            rows += (
+                f'<tr>'
+                f"<td style='white-space:nowrap;padding:7px 8px;border-bottom:1px solid #f5f5f5'>{s.date_str}</td>"
+                f"<td style='white-space:nowrap;padding:7px 8px;border-bottom:1px solid #f5f5f5;color:{time_color}'>{s.time_str}</td>"
+                f"<td style='padding:7px 8px;border-bottom:1px solid #f5f5f5;color:#111'>{class_name}{instr}</td>"
+                f"<td style='padding:7px 8px;border-bottom:1px solid #f5f5f5'>{btn}</td>"
+                f'</tr>'
+            )
+
+    return f"""
+      <div class="sec">
+        <p class="sec-title">🔄 Also available — backup studios</p>
+        <table>
+          <thead><tr><th>Date</th><th>Time</th><th>Class</th><th></th></tr></thead>
+          <tbody>{rows}</tbody>
+        </table>
+      </div>
+      <div class="div"></div>"""
 
 
 def _send(to_email: str, subject: str, html_body: str) -> None:

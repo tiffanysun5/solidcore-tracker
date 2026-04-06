@@ -54,7 +54,7 @@ def main() -> None:
 
     # ── 2. Bookings: upcoming reserved + recent completed (for quota) ────────
     log.info("Step 2: Fetching bookings + check-in history")
-    from src.wellhub_api import get_upcoming_bookings, get_schedule
+    from src.wellhub_api import get_upcoming_bookings, get_schedule, get_extra_slots
     all_bookings     = get_upcoming_bookings()
     upcoming_bookings = [b for b in all_bookings if not b.completed]
     booked_dates      = {b.dt.date() for b in upcoming_bookings}
@@ -64,6 +64,11 @@ def main() -> None:
     log.info("Step 3: Fetching Wellhub schedule")
     slots = get_schedule()
     log.info("  Got %d total class slots", len(slots))
+
+    # ── 3b. Extra studios (Nofar, CorePower) ──────────────────────────────
+    log.info("Step 3b: Fetching extra studio slots")
+    extra_slots = get_extra_slots()
+    log.info("  Got %d extra slots", len(extra_slots))
 
     # ── 4. Filter — skip already-booked days ─────────────────────────────
     log.info("Step 4: Applying filters")
@@ -87,7 +92,8 @@ def main() -> None:
     else:
         log.info("Step 5: Sending email digest to %s", NOTIFY_EMAIL)
         # Pass all_bookings (upcoming + completed) so quota counts past check-ins too
-        send_digest(matches, all_bookings, upcoming_bookings, new_day, NOTIFY_EMAIL)
+        send_digest(matches, all_bookings, upcoming_bookings, new_day, NOTIFY_EMAIL,
+                    extra_slots=extra_slots)
 
     log.info("Done.")
 
