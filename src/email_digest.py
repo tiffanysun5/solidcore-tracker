@@ -94,7 +94,8 @@ def _build_email(
            if other_matches else "")
     )
 
-    # Weekly quota (uses all_bookings: upcoming + completed check-ins)
+    # Weekly quota — solidcore only (premium class limit is 4/week)
+    solidcore_bookings = [b for b in all_bookings if "[solidcore]" in b.studio_name.lower()]
     this_mon = today - timedelta(days=today.weekday())
     this_sun = this_mon + timedelta(days=6)
     next_mon = this_sun + timedelta(days=1)
@@ -104,8 +105,8 @@ def _build_email(
     def wcount(bkgs, mon, sun):
         return sum(1 for b in bkgs if mon <= b.dt.date() <= sun)
 
-    tw_left = LIMIT - wcount(all_bookings, this_mon, this_sun)
-    nw_left = LIMIT - wcount(all_bookings, next_mon, next_sun)
+    tw_left = LIMIT - wcount(solidcore_bookings, this_mon, this_sun)
+    nw_left = LIMIT - wcount(solidcore_bookings, next_mon, next_sun)
 
     def pill(left):
         c = "#059669" if left > 1 else ("#f59e0b" if left == 1 else "#ef4444")
@@ -120,17 +121,34 @@ def _build_email(
         f'</div>'
     )
 
+    # Monthly reminder — Othership + Stretch*d (once per month each)
+    from src.config import MONTHLY_STUDIOS
+    this_month_start = today.replace(day=1)
+    monthly_sec = _monthly_reminder_section(all_bookings, this_month_start, today, MONTHLY_STUDIOS)
+
     # Booked section
     if upcoming_bookings:
         rows = ""
+        tomorrow = today + timedelta(days=1)
+        owner, _, repo_name = GITHUB_REPO.partition("/")
         for b in sorted(upcoming_bookings, key=lambda x: x.dt):
             title  = b.class_name.split(" | ", 1)[-1] if " | " in b.class_name else b.class_name
             studio = b.studio_name.replace("[solidcore] ", "").replace(", NY", "")
+            cancel_btn = ""
+            if b.attendance_id:
+                cp = urllib.parse.urlencode({
+                    "attendance_id": b.attendance_id,
+                    "studio":        studio,
+                    "dt":            f"{b.dt.strftime('%a %b %-d')} {b.dt.strftime('%-I:%M %p')}",
+                    "repo":          GITHUB_REPO,
+                })
+                cancel_url = f"https://{owner}.github.io/{repo_name}/cancel.html?{cp}"
+                cancel_btn = f' <a href="{cancel_url}" style="font-size:11px;color:#dc2626;text-decoration:none;border:1px solid #dc2626;border-radius:4px;padding:2px 6px;white-space:nowrap">Cancel</a>'
             rows += (
                 f'<tr><td style="white-space:nowrap;color:#374151;font-weight:500">{b.dt.strftime("%a %b %-d")}</td>'
                 f'<td style="white-space:nowrap;color:#6b7280">{b.dt.strftime("%-I:%M %p")}</td>'
                 f'<td style="color:#2563eb;font-weight:500">{studio}</td>'
-                f'<td style="color:#111">{title}</td></tr>'
+                f'<td style="color:#111">{title}{cancel_btn}</td></tr>'
             )
         booked_tbl = (
             '<table><thead><tr><th>Date</th><th>Time</th><th>Studio</th><th>Class</th></tr></thead>'
@@ -162,6 +180,7 @@ def _build_email(
 <html><head><meta charset="utf-8"><style>{CSS}</style></head>
 <body><div class="wrap">
   <div class="hdr"><h1>Solidcore Tracker</h1><p>{datetime.now().strftime('%A, %B %-d, %Y')}</p></div>
+  {monthly_sec}
   {booked_sec}
   {new_sec}
   {other_sec}
@@ -241,6 +260,33 @@ def _book_btn(m: MatchedClass) -> str:
 
 
 # ── Extra studios section ──────────────────────────────────────────────────
+
+def _monthly_reminder_section(all_bookings: list, month_start, today, monthly_studios: list) -> str:
+    """Show a reminder pill for each monthly studio if not yet visited this month."""
+    labels = {"othership": "Othership", "stretch": "Stretch*d"}
+    items = []
+    for keyword in monthly_studios:
+        done = any(
+            keyword in b.studio_name.lower() and month_start <= b.dt.date() <= today
+            for b in all_bookings if b.completed
+        )
+        label = labels.get(keyword, keyword.title())
+        if done:
+            badge = (f'<span style="background:#d1fae5;color:#065f46;font-size:11px;font-weight:700;'
+                     f'padding:3px 10px;border-radius:20px">✓ {label} done</span>')
+        else:
+            badge = (f'<span style="background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;'
+                     f'padding:3px 10px;border-radius:20px">⏰ {label} — not yet this month</span>')
+        items.append(badge)
+
+    if not items:
+        return ""
+    pills = " ".join(items)
+    return (f'<div class="sec" style="padding:12px 16px">'
+            f'<p class="sec-title" style="margin-bottom:8px">🗓 Monthly check-ins</p>'
+            f'<div style="display:flex;gap:8px;flex-wrap:wrap">{pills}</div>'
+            f'</div><div class="div"></div>')
+
 
 def _extra_section(slots: list, booked_dates: set | None = None) -> str:
     """Compact table of Nofar / CorePower Sculpt — preferred times first, max 3/day."""

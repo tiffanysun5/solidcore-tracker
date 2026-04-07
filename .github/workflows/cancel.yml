@@ -1,0 +1,38 @@
+name: Cancel class
+
+on:
+  workflow_dispatch:
+    inputs:
+      booking_ids:
+        description: "attendance_id:slot_id (from cancel link in email)"
+        required: true
+        type: string
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Cancel booking
+        env:
+          WELLHUB_REFRESH_TOKEN: ${{ secrets.WELLHUB_REFRESH_TOKEN }}
+        run: python cancel.py --ids "${{ inputs.booking_ids }}"
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cancel-result
+          path: cancel_result.json
+          if-no-files-found: ignore

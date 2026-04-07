@@ -1,0 +1,39 @@
+name: Auto check-in
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Trigger source (e.g. ios-shortcut, manual)"
+        required: false
+        default: "manual"
+        type: string
+
+jobs:
+  checkin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Check in to today's class
+        env:
+          WELLHUB_REFRESH_TOKEN: ${{ secrets.WELLHUB_REFRESH_TOKEN }}
+        run: python checkin.py
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkin-result
+          path: checkin_result.json
+          if-no-files-found: ignore

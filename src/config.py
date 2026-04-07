@@ -27,16 +27,19 @@ BACKUP_END_HOUR   = 19  # exclusive (7pm cutoff)
 
 BOOKING_WINDOW_DAYS = 14
 
-# Extra studios shown as "also available" at bottom of email — no muscle/instructor filter
+# Extra studios shown as backup at bottom of email — standard (1/day) classes, not counted in quota.
 EXTRA_STUDIOS = {
     "Nofar Method - Flatiron": {
         "partner_id": "0a283587-673b-4cea-9796-68b5bf387ae1",
-        "class_filter": None,  # show all classes
+        "class_filter": None,
     },
-    # CorePower — schedule not currently returned via Wellhub API (0 items).
-    # IDs preserved; re-enable if this changes.
+    # CorePower — API returns 0 slots currently. IDs preserved for when this changes.
     # "CorePower Yoga Sculpt - Flatiron":          {"partner_id": "f2140a07-8621-45b5-96c7-2f57233cdd4e", "class_filter": "yoga sculpt"},
     # "CorePower Yoga Sculpt - Greenwich Village": {"partner_id": "7b892807-f83e-477a-9e33-1f193b1d2684", "class_filter": "yoga sculpt"},
 }
+
+# Monthly once-per-month studios — reminder shown in email if not yet visited this month.
+# Matched against partner name in check-in history (case-insensitive substring).
+MONTHLY_STUDIOS = ["othership", "stretch"]
 
 NOTIFY_EMAIL = "tiffanysun27@gmail.com"
