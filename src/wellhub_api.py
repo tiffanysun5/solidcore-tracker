@@ -155,6 +155,7 @@ class ClassSlot:
     muscles: list[str] = field(default_factory=list)
     class_id_gql: str = ""       # classId from partnerClassSchedule (needed for bookingAttendance)
     partner_id: str = ""         # partnerId (per-studio constant)
+    available_spots: int = 0
 
     @property
     def date(self) -> date:
@@ -292,6 +293,7 @@ def get_schedule(email: str = "", password: str = "", headless: bool = True) -> 
                         dt=dt,
                         class_id_gql=str(item.get("classId", "")),
                         partner_id=studio_cfg["partner_id"],
+                        available_spots=item.get("availableSpots", 0),
                     ))
 
             except Exception as exc:
@@ -699,8 +701,8 @@ def get_upcoming_bookings() -> list[WellhubBooking]:
 
 
 def get_extra_slots() -> list[ClassSlot]:
-    """Fetch TODAY's classes from EXTRA_STUDIOS (Nofar, CorePower) as same-day backup."""
-    from src.config import EXTRA_STUDIOS, BACKUP_START_HOUR, BACKUP_END_HOUR
+    """Fetch classes from EXTRA_STUDIOS (Nofar, CorePower) for the next 3 days."""
+    from src.config import EXTRA_STUDIOS, PREFERRED_START_HOUR, PREFERRED_END_HOUR
     slots: list[ClassSlot] = []
     today = datetime.now(timezone.utc).date()
 
@@ -708,7 +710,7 @@ def get_extra_slots() -> list[ClassSlot]:
         partner_id   = cfg["partner_id"]
         class_filter = cfg.get("class_filter")
         current = today
-        cutoff  = today  # only fetch today
+        cutoff  = today + timedelta(days=3)
         while current <= cutoff:
             start = datetime(current.year, current.month, current.day, 4, 0, 0, tzinfo=timezone.utc)
             end   = start + timedelta(hours=23, minutes=59, seconds=59)
@@ -745,7 +747,7 @@ def get_extra_slots() -> list[ClassSlot]:
                     except Exception:
                         current += timedelta(days=1)
                         continue
-                    if not (BACKUP_START_HOUR <= dt.hour < BACKUP_END_HOUR):
+                    if not (PREFERRED_START_HOUR <= dt.hour < PREFERRED_END_HOUR):
                         continue
                     slot = ClassSlot(
                         wellhub_class_id = item.get("id", ""),
@@ -755,7 +757,8 @@ def get_extra_slots() -> list[ClassSlot]:
                         instructor       = instructor,
                         dt               = dt,
                     )
-                    slot._class_name = class_name  # stash for display
+                    slot._class_name      = class_name
+                    slot._available_spots = item.get("availableSpots", 0)
                     slots.append(slot)
             except Exception as exc:
                 log.debug("Extra schedule fetch error %s %s: %s", studio_name, current, exc)

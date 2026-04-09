@@ -92,8 +92,19 @@ def main() -> None:
     else:
         log.info("Step 5: Sending email digest to %s", NOTIFY_EMAIL)
         # Pass all_bookings (upcoming + completed) so quota counts past check-ins too
+        # Key by (date, hour, minute, studio_key) since booking class_id ≠ slot wellhub_class_id
+        def _studio_key(name: str) -> str:
+            n = name.lower()
+            if "chelsea" in n: return "chelsea"
+            if "greenwich" in n: return "greenwich"
+            return n.split()[0] if n.split() else n
+        slot_by_id = {
+            (s.date, s.dt.hour, s.dt.minute, _studio_key(s.studio)): s
+            for s in slots
+        }
         send_digest(matches, all_bookings, upcoming_bookings, new_day, NOTIFY_EMAIL,
-                    extra_slots=extra_slots)
+                    extra_slots=extra_slots, focus_map=focus_map, slot_by_id=slot_by_id,
+                    all_slots=slots)
 
     log.info("Done.")
 

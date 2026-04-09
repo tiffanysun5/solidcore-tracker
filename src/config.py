@@ -11,7 +11,8 @@ STUDIOS = {
     "Greenwich Village": {
         "address": "37 W 8th St",
         "partner_id": "688587f9-f40d-43dc-ac8e-2922c1a12915",
-        "instructors": {"Jordan A.", "Payton B.", "Matthew C.", "Sara I.", "Bryce A.", "Sydney S."},
+        # Senior Master Coaches only
+        "instructors": {"Angie M.", "Bryce A.", "Matt C.", "Payton B.", "Sara I."},
     },
 }
 
@@ -33,9 +34,8 @@ EXTRA_STUDIOS = {
         "partner_id": "0a283587-673b-4cea-9796-68b5bf387ae1",
         "class_filter": None,
     },
-    # CorePower — API returns 0 slots currently. IDs preserved for when this changes.
-    # "CorePower Yoga Sculpt - Flatiron":          {"partner_id": "f2140a07-8621-45b5-96c7-2f57233cdd4e", "class_filter": "yoga sculpt"},
-    # "CorePower Yoga Sculpt - Greenwich Village": {"partner_id": "7b892807-f83e-477a-9e33-1f193b1d2684", "class_filter": "yoga sculpt"},
+    "CorePower Yoga Sculpt - Flatiron":          {"partner_id": "f2140a07-8621-45b5-96c7-2f57233cdd4e", "class_filter": "yoga sculpt"},
+    "CorePower Yoga Sculpt - Greenwich Village": {"partner_id": "7b892807-f83e-477a-9e33-1f193b1d2684", "class_filter": "yoga sculpt"},
 }
 
 # Monthly once-per-month studios — reminder shown in email if not yet visited this month.

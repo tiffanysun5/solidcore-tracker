@@ -63,9 +63,13 @@ def send_digest(
     new_day:           date,
     to_email:          str,
     extra_slots:       list | None = None,
+    focus_map:         dict | None = None,
+    slot_by_id:        dict | None = None,
+    all_slots:         list | None = None,
 ) -> None:
     subject, html_body = _build_email(matches, all_bookings, upcoming_bookings, new_day,
-                                      extra_slots or [])
+                                      extra_slots or [], focus_map or {}, slot_by_id or {},
+                                      all_slots or [])
     _send(to_email, subject, html_body)
 
 
@@ -75,8 +79,14 @@ def _build_email(
     upcoming_bookings: list,
     new_day:           date,
     extra_slots:       list | None = None,
+    focus_map:         dict | None = None,
+    slot_by_id:        dict | None = None,
+    slots:             list | None = None,
 ) -> tuple[str, str]:
     extra_slots = extra_slots or []
+    focus_map   = focus_map   or {}
+    slot_by_id  = slot_by_id  or {}
+    slots       = slots       or []
 
     from zoneinfo import ZoneInfo
     ny    = ZoneInfo("America/New_York")
@@ -144,14 +154,34 @@ def _build_email(
                 })
                 cancel_url = f"https://{owner}.github.io/{repo_name}/cancel.html?{cp}"
                 cancel_btn = f' <a href="{cancel_url}" style="font-size:11px;color:#dc2626;text-decoration:none;border:1px solid #dc2626;border-radius:4px;padding:2px 6px;white-space:nowrap">Cancel</a>'
+            # Muscle focus + spots combined into one cell
+            # Match by (date, hour, minute, studio_key) since booking class_id ≠ slot id
+            def _sk(name: str) -> str:
+                n = name.lower()
+                if "chelsea" in n: return "chelsea"
+                if "greenwich" in n: return "greenwich"
+                return n.split()[0] if n.split() else n
+            muscles = focus_map.get(b.dt.date(), [])
+            slot    = slot_by_id.get((b.dt.date(), b.dt.hour, b.dt.minute, _sk(b.studio_name)))
+            muscle_line = (f'<span style="color:#059669;font-size:11px;font-weight:600">'
+                           f'{" · ".join(muscles)}</span>' if muscles else '')
+            # If slot not in schedule it's sold out (API only returns bookable slots)
+            sp = slot.available_spots if slot else 0
+            spots_line = (f'<span style="color:#6b7280;font-size:11px">'
+                          f'({sp} spot{"s" if sp != 1 else ""})</span>')
+            sep = '<br>' if muscle_line else ''
+            focus_cell = muscle_line + sep + spots_line
             rows += (
                 f'<tr><td style="white-space:nowrap;color:#374151;font-weight:500">{b.dt.strftime("%a %b %-d")}</td>'
                 f'<td style="white-space:nowrap;color:#6b7280">{b.dt.strftime("%-I:%M %p")}</td>'
-                f'<td style="color:#2563eb;font-weight:500">{studio}</td>'
-                f'<td style="color:#111">{title}{cancel_btn}</td></tr>'
+                f'<td style="color:#2563eb;font-weight:500;white-space:nowrap">{studio}</td>'
+                f'<td style="color:#111;width:50%;padding-left:24px">{title}{cancel_btn}</td>'
+                f'<td style="line-height:1.6;padding-left:32px;white-space:nowrap">{focus_cell}</td></tr>'
             )
         booked_tbl = (
-            '<table><thead><tr><th>Date</th><th>Time</th><th>Studio</th><th>Class</th></tr></thead>'
+            '<table><thead><tr><th>Date</th><th>Time</th><th>Studio</th>'
+            '<th style="padding-left:24px;text-align:center">Class</th>'
+            '<th style="padding-left:32px;white-space:nowrap">Muscle Focus</th></tr></thead>'
             f'<tbody>{rows}</tbody></table>'
         )
     else:
@@ -166,26 +196,41 @@ def _build_email(
       <div class="div"></div>"""
 
     # New day + other sections
+    booked_dates_set_pre = {b.dt.date() for b in upcoming_bookings}
+    new_day_empty_msg = (
+        f"✓ Already booked on {new_day.strftime('%a %b %-d')} — no action needed."
+        if new_day in booked_dates_set_pre
+        else f"No matching classes on {new_day.strftime('%a %b %-d')} within 9am–7pm."
+    )
     new_sec   = _match_section(new_day_matches,
                                f"🆕 New day: {new_day.strftime('%A, %b %-d')} (just opened)",
-                               f"No matching classes on {new_day.strftime('%a %b %-d')} within 9am–7pm.")
+                               new_day_empty_msg)
     other_sec = _match_section(other_matches, "Other open days") if other_matches else ""
 
-    booked_dates_set = {b.dt.date() for b in upcoming_bookings}
-    # Show extra studios for TODAY only (as a same-day backup option)
-    extra_today = [s for s in extra_slots if s.date == today]
-    extra_sec = _extra_section(extra_today, booked_dates=booked_dates_set) if extra_today else ""
+    booked_dates_set = booked_dates_set_pre
+    # Show extra studios for next 3 days, only on days without a Solidcore booking
+    extra_cutoff = today + timedelta(days=3)
+    extra_upcoming = [s for s in extra_slots if today <= s.date <= extra_cutoff]
+    extra_sec = _extra_section(extra_upcoming, booked_dates=booked_dates_set) if extra_upcoming else ""
 
+    # All Solidcore classes — next 5 days, no filters
+    all_slots_sec = _all_classes_section(slots, today, booked_dates_set, focus_map)
+
+    quote = _daily_quote(today, focus_map)
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>{CSS}</style></head>
 <body><div class="wrap">
-  <div class="hdr"><h1>Solidcore Tracker</h1><p>{datetime.now().strftime('%A, %B %-d, %Y')}</p></div>
+  <div class="hdr"><h1>🍑 Solidcore Tracker</h1><p>{datetime.now().strftime('%A, %B %-d, %Y')}</p></div>
+  <div style="background:#fdf2f8;text-align:center;padding:18px 20px 14px">
+    <span style="font-size:26px;margin-right:8px">🍑</span><span style="font-size:22px;font-weight:900;color:#ec4899;letter-spacing:1px;text-transform:uppercase;font-style:italic;text-shadow:2px 2px 0px #fbcfe8">{quote}</span><span style="font-size:26px;margin-left:8px">🍑</span>
+  </div>
   {monthly_sec}
   {booked_sec}
   {new_sec}
   {other_sec}
   {extra_sec}
-  <div class="ftr">solidcore-tracker · muscle focus, instructor &amp; time (9am–7pm)</div>
+  {all_slots_sec}
+  <div class="ftr">🍑 solidcore-tracker · muscle focus, instructor &amp; time (9am–7pm)</div>
 </div></body></html>"""
 
     return subject, html
@@ -230,13 +275,16 @@ def _rows(matches: list[MatchedClass], kind: str) -> str:
         sec_str   = (f'<br><span class="muscle-sec">+ {" + ".join(secondary)}</span>'
                      if secondary else "")
         s_color   = "#2563eb" if "Chelsea" in m.slot.studio else "#7c3aed"
+        sp = m.slot.available_spots
+        spots_str = (f'<br><span style="color:#6b7280;font-size:11px">({sp} spot{"s" if sp != 1 else ""})</span>'
+                     if sp is not None else "")
         html += (
             f'<tr class="{row_cls}">'
             f"<td style='white-space:nowrap'>{m.slot.date_str}</td>"
             f"<td style='white-space:nowrap'>{m.slot.time_str}<br>{badge}</td>"
             f'<td style="color:{s_color};font-weight:500">{m.slot.studio}</td>'
             f"<td>{m.slot.instructor}</td>"
-            f'<td><span class="muscle">{target}</span>{sec_str}</td>'
+            f'<td><span class="muscle">{target}</span>{sec_str}{spots_str}</td>'
             f"<td>{_book_btn(m)}</td>"
             f"</tr>"
         )
@@ -328,7 +376,7 @@ def _extra_section(slots: list, booked_dates: set | None = None) -> str:
             class_name = getattr(s, '_class_name', '') or s.studio
             is_pref = PREFERRED_START_HOUR <= s.dt.hour < PREFERRED_END_HOUR
             time_color = "#111" if is_pref else "#6b7280"
-            instr = (f'  <span style="color:#9ca3af;font-size:11px">· {s.instructor}</span>'
+            instr = (f'  <span style="color:#9ca3af">· {s.instructor}</span>'
                      if s.instructor else '')
             owner, _, repo = GITHUB_REPO.partition("/")
             params = urllib.parse.urlencode({
@@ -339,12 +387,18 @@ def _extra_section(slots: list, booked_dates: set | None = None) -> str:
             })
             book_url = f"https://{owner}.github.io/{repo}/book.html?{params}"
             btn = f'<a class="book-btn" href="{book_url}">Book →</a>'
+            spots = getattr(s, "_available_spots", None)
+            spots_str = ""
+            if spots is not None:
+                sc = "#059669" if spots >= 5 else ("#f59e0b" if spots >= 2 else "#ef4444")
+                spots_str = (f' <span style="color:{sc};font-weight:600">'
+                             f'{spots} spot{"s" if spots != 1 else ""}</span>')
             rows += (
                 f'<tr>'
-                f"<td style='white-space:nowrap;padding:7px 8px;border-bottom:1px solid #f5f5f5'>{s.date_str}</td>"
-                f"<td style='white-space:nowrap;padding:7px 8px;border-bottom:1px solid #f5f5f5;color:{time_color}'>{s.time_str}</td>"
-                f"<td style='padding:7px 8px;border-bottom:1px solid #f5f5f5;color:#111'>{class_name}{instr}</td>"
-                f"<td style='padding:7px 8px;border-bottom:1px solid #f5f5f5'>{btn}</td>"
+                f"<td style='white-space:nowrap;padding:7px 8px;border-bottom:1px solid #f5f5f5;font-size:13px'>{s.date_str}</td>"
+                f"<td style='white-space:nowrap;padding:7px 8px;border-bottom:1px solid #f5f5f5;color:{time_color};font-size:13px'>{s.time_str}</td>"
+                f"<td style='padding:7px 8px;border-bottom:1px solid #f5f5f5;color:#111;font-size:13px'>{class_name}{instr}{spots_str}</td>"
+                f"<td style='padding:7px 8px;border-bottom:1px solid #f5f5f5;font-size:13px'>{btn}</td>"
                 f'</tr>'
             )
 
@@ -353,6 +407,155 @@ def _extra_section(slots: list, booked_dates: set | None = None) -> str:
         <p class="sec-title">🔄 Also available — backup studios</p>
         <table>
           <thead><tr><th>Date</th><th>Time</th><th>Class</th><th></th></tr></thead>
+          <tbody>{rows}</tbody>
+        </table>
+      </div>
+      <div class="div"></div>"""
+
+
+MUSCLE_QUOTES = {
+    "Outer Glutes": [
+        "🍑 OUTER GLUTES DAY — time to build that shelf, queen!",
+        "🍑 Outer glutes don't sculpt themselves. LET'S GO.",
+        "💅 Side booty szn is TODAY. Show up.",
+        "🔥 Those outer glutes aren't gonna grow by themselves, babe.",
+        "👑 Outer glute day is basically a royal decree. ATTEND.",
+    ],
+    "Center Glutes": [
+        "🍑 CENTER GLUTES — the main character of your booty. Go!",
+        "💥 Dead center, dead serious. Center glutes TODAY.",
+        "👸 Your center glutes are calling. Pick UP.",
+        "🔥 Center glutes: the foundation of every great booty. Build it.",
+        "💪 Middle child energy? Not your glutes. Center glutes DAY.",
+    ],
+    "Leg Wrap": [
+        "⚡ LEG WRAP DAY — wrap it up and burn it DOWN.",
+        "🦵 Legs, baby. Wrap 'em. Burn 'em. Slay.",
+        "🔥 Leg wrap szn is EVERY szn. Get after it.",
+        "💅 Those legs aren't gonna wrap themselves. LET'S GO.",
+        "👑 Leg wrap queen. That's YOU. Now move.",
+    ],
+    "Hamstrings": [
+        "🔥 HAMSTRING DAY — the back of your legs called and they want ATTENTION.",
+        "💪 Hamstrings: the unsung hero of a great booty. TODAY is their day.",
+        "🦵 Back of the leg, front of the line. Hamstrings GO.",
+        "✨ Strong hammies = strong everything. Show up.",
+        "👸 Hamstrings deserve love too. Give it to them.",
+    ],
+    "Inner Thighs": [
+        "💎 INNER THIGHS — squeeze squeeze squeeze, queen!",
+        "🔥 Inner thigh day. Pretend there's a dollar bill between them.",
+        "💅 Inner thighs: the VIP section of leg day. You're on the list.",
+        "✨ Squeeze it like it owes you money. Inner thighs TODAY.",
+        "👑 Inner thigh strength is quiet power. Build it.",
+    ],
+}
+
+FALLBACK_QUOTES = [
+    "🍑 Work that booty, queen!",
+    "💅 Your glutes called. They said show UP.",
+    "🔥 Sweat now, slay later.",
+    "👑 No one built an empire by skipping leg day.",
+    "💪 She believed she could, so she squatted.",
+    "🍑 That booty isn't gonna build itself. Let's go.",
+    "💃 Shake what solidcore gave ya.",
+    "🔥 Pain is temporary. Glute gains are forever.",
+    "👸 Queens don't skip. Queens book.",
+    "💫 You didn't wake up to be mediocre, babe.",
+    "💎 She's a ten. She also never misses solidcore.",
+    "🔥 Hot girl walk? Try hot girl SOLIDCORE.",
+    "✨ Sore today, snatched tomorrow.",
+    "💪 She woke up like this. Then she worked out.",
+]
+
+
+def _daily_quote(today, focus_map: dict | None = None) -> str:
+    import hashlib
+    # Use tomorrow's muscle focus to pick a relevant quote
+    from datetime import timedelta
+    tomorrow = today + timedelta(days=1)
+    muscles = (focus_map or {}).get(tomorrow, [])
+    # Find first muscle that has a dedicated quote bank
+    quotes = None
+    for muscle in muscles:
+        if muscle in MUSCLE_QUOTES:
+            quotes = MUSCLE_QUOTES[muscle]
+            break
+    if not quotes:
+        quotes = FALLBACK_QUOTES
+    idx = int(hashlib.md5(str(today).encode()).hexdigest(), 16) % len(quotes)
+    return quotes[idx]
+
+
+def _all_classes_section(slots: list, today, booked_dates: set, focus_map: dict) -> str:
+    """All available Solidcore classes for the next 5 days — no instructor/muscle filter."""
+    from src.config import BACKUP_START_HOUR, BACKUP_END_HOUR, TARGET_MUSCLES
+    from datetime import timedelta
+    from collections import defaultdict
+
+    cutoff = today + timedelta(days=5)
+    window = [s for s in slots
+              if today <= s.date <= cutoff
+              and BACKUP_START_HOUR <= s.dt.hour < BACKUP_END_HOUR]
+    window.sort(key=lambda s: (s.date, s.dt))
+
+    if not window:
+        return ""
+
+    by_day: dict = defaultdict(list)
+    for s in window:
+        by_day[s.date].append(s)
+
+    owner, _, repo = GITHUB_REPO.partition("/")
+    rows = ""
+    for d in sorted(by_day):
+        day_muscles = focus_map.get(d, [])
+        target_hit  = any(m in TARGET_MUSCLES for m in day_muscles)
+        muscle_str  = " · ".join(day_muscles) if day_muscles else "—"
+        muscle_color = "#059669" if target_hit else "#9ca3af"
+        is_booked   = d in booked_dates
+        day_label   = d.strftime("%a %b %-d")
+        booked_tag  = (' <span style="font-size:9px;background:#dbeafe;color:#1e40af;'
+                       'padding:1px 5px;border-radius:3px;font-weight:700">BOOKED</span>'
+                       if is_booked else "")
+        rows += (f'<tr><td colspan="5" style="padding:6px 8px 3px;font-size:11px;font-weight:700;'
+                 f'letter-spacing:.5px;background:#f9fafb;border-top:2px solid #e5e7eb;'
+                 f'border-bottom:1px solid #e5e7eb;color:#374151">'
+                 f'{day_label}{booked_tag}'
+                 f'<span style="font-weight:400;color:{muscle_color};margin-left:10px;font-size:10px">'
+                 f'{muscle_str}</span></td></tr>')
+        for s in by_day[d]:
+            s_color = "#2563eb" if "Chelsea" in s.studio else "#7c3aed"
+            sp = s.available_spots
+            spots_str = (f'<span style="color:#6b7280;font-size:11px">({sp} spot{"s" if sp != 1 else ""})</span>'
+                         if sp is not None else "")
+            params = urllib.parse.urlencode({
+                "class_id": s.wellhub_class_id, "class_id_gql": s.class_id_gql,
+                "partner_id": s.partner_id, "studio": s.studio,
+                "instructor": s.instructor,
+                "dt": f"{s.date_str} {s.time_str}",
+                "muscles": " · ".join(day_muscles),
+                "repo": GITHUB_REPO,
+            })
+            book_url = f"https://{owner}.github.io/{repo}/book.html?{params}"
+            btn = f'<a class="book-btn" href="{book_url}">Book →</a>'
+            rows += (
+                f'<tr style="background:#fff">'
+                f'<td style="white-space:nowrap;padding:6px 8px;border-bottom:1px solid #f5f5f5;color:#374151">{s.time_str}</td>'
+                f'<td style="padding:6px 8px;border-bottom:1px solid #f5f5f5;color:{s_color};font-weight:500;white-space:nowrap">{s.studio}</td>'
+                f'<td style="padding:6px 8px;border-bottom:1px solid #f5f5f5;color:#111">{s.instructor}</td>'
+                f'<td style="padding:6px 8px;border-bottom:1px solid #f5f5f5">{spots_str}</td>'
+                f'<td style="padding:6px 8px;border-bottom:1px solid #f5f5f5">{btn}</td>'
+                f'</tr>'
+            )
+
+    return f"""
+      <div class="sec">
+        <p class="sec-title">📋 All Solidcore classes — next 5 days</p>
+        <table>
+          <thead><tr>
+            <th>Time</th><th>Studio</th><th>Instructor</th><th>Spots</th><th></th>
+          </tr></thead>
           <tbody>{rows}</tbody>
         </table>
       </div>
