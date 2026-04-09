@@ -314,12 +314,13 @@ def _book_btn(m: MatchedClass) -> str:
 
 def _monthly_reminder_section(all_bookings: list, month_start, today, monthly_studios: list) -> str:
     """Show a reminder pill for each monthly studio if not yet visited this month."""
-    from src.config import MONTHLY_STUDIOS_DONE
     labels = {"othership": "Othership", "stretch": "Stretch*d"}
     items = []
     for keyword in monthly_studios:
-        # Manual override in config (these studios aren't booked through Wellhub)
-        done = any(keyword in d.lower() for d in MONTHLY_STUDIOS_DONE)
+        done = any(
+            keyword in b.studio_name.lower() and month_start <= b.dt.date() <= today
+            for b in all_bookings if b.completed
+        )
         label = labels.get(keyword, keyword.title())
         if done:
             badge = (f'<span style="background:#d1fae5;color:#065f46;font-size:11px;font-weight:700;'
@@ -405,10 +406,10 @@ def _extra_section(slots: list, booked_dates: set | None = None) -> str:
             )
 
     return f"""
-      <div class="sec">
+      <div class="sec" style="font-size:13px">
         <p class="sec-title">🔄 Also available — backup studios</p>
-        <table style="font-size:13px">
-          <thead><tr><th>Date</th><th>Time</th><th>Class</th><th></th></tr></thead>
+        <table style="font-size:13px;width:100%;border-collapse:collapse">
+          <thead><tr><th style="font-size:11px">Date</th><th style="font-size:11px">Time</th><th style="font-size:11px">Class</th><th></th></tr></thead>
           <tbody>{rows}</tbody>
         </table>
       </div>

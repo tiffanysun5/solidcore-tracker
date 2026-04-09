@@ -39,9 +39,7 @@ EXTRA_STUDIOS = {
 }
 
 # Monthly once-per-month studios — reminder shown in email if not yet visited this month.
-# These aren't booked through Wellhub so can't be auto-detected.
-# ⬇️ Manually update this list each month when you've gone:
+# Matched against studio name in Wellhub check-in history (case-insensitive substring).
 MONTHLY_STUDIOS = ["othership", "stretch"]
-MONTHLY_STUDIOS_DONE = []  # e.g. ["othership"] once you've gone this month
 
 NOTIFY_EMAIL = "tiffanysun27@gmail.com"
