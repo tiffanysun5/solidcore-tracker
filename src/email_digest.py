@@ -66,10 +66,11 @@ def send_digest(
     focus_map:         dict | None = None,
     slot_by_id:        dict | None = None,
     all_slots:         list | None = None,
+    new_day_all:       list | None = None,
 ) -> None:
     subject, html_body = _build_email(matches, all_bookings, upcoming_bookings, new_day,
                                       extra_slots or [], focus_map or {}, slot_by_id or {},
-                                      all_slots or [])
+                                      all_slots or [], new_day_all or [])
     _send(to_email, subject, html_body)
 
 
@@ -82,17 +83,19 @@ def _build_email(
     focus_map:         dict | None = None,
     slot_by_id:        dict | None = None,
     slots:             list | None = None,
+    new_day_all:       list | None = None,
 ) -> tuple[str, str]:
-    extra_slots = extra_slots or []
-    focus_map   = focus_map   or {}
-    slot_by_id  = slot_by_id  or {}
-    slots       = slots       or []
+    extra_slots  = extra_slots  or []
+    focus_map    = focus_map    or {}
+    slot_by_id   = slot_by_id   or {}
+    slots        = slots        or []
+    new_day_all  = new_day_all  or []
 
     from zoneinfo import ZoneInfo
     ny    = ZoneInfo("America/New_York")
     today = datetime.now(tz=ny).date()
 
-    new_day_matches = [m for m in matches if m.slot.date == new_day]
+    new_day_matches = new_day_all if new_day_all else [m for m in matches if m.slot.date == new_day]
     other_matches   = [m for m in matches if m.slot.date != new_day]
 
     # Subject

@@ -82,6 +82,12 @@ def main() -> None:
     new_day = today + timedelta(days=14)
     log.info("  New day opening today: %s", new_day)
 
+    # New day: show ALL classes regardless of muscle focus (instructor + time filter only)
+    new_day_slots = [s for s in slots if s.date == new_day]
+    new_day_all = apply_filters(new_day_slots, focus_map, booked_dates=booked_dates,
+                                require_muscle_match=False)
+    log.info("  New day has %d classes (no muscle filter)", len(new_day_all))
+
     # ── 6. Send email ─────────────────────────────────────────────────────
     from src.config import NOTIFY_EMAIL
     from src.email_digest import send_digest
@@ -104,7 +110,7 @@ def main() -> None:
         }
         send_digest(matches, all_bookings, upcoming_bookings, new_day, NOTIFY_EMAIL,
                     extra_slots=extra_slots, focus_map=focus_map, slot_by_id=slot_by_id,
-                    all_slots=slots)
+                    all_slots=slots, new_day_all=new_day_all)
 
     log.info("Done.")
 

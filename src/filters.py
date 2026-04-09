@@ -55,6 +55,7 @@ def apply_filters(
     slots: list[ClassSlot],
     focus_map: dict[date, list[str]],
     booked_dates: set[date] | None = None,
+    require_muscle_match: bool = True,
 ) -> list[MatchedClass]:
     """
     Apply all filters and return matched classes sorted by datetime.
@@ -85,7 +86,7 @@ def apply_filters(
         # 2. Muscle focus filter
         day_muscles = muscles_for_date(focus_map, slot.date)
         matched_muscles = _matching_muscles(day_muscles)
-        if not matched_muscles:
+        if require_muscle_match and not matched_muscles:
             log.debug(
                 "No target muscles on %s (got %r) — skipping",
                 slot.date, day_muscles,
