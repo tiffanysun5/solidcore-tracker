@@ -314,13 +314,12 @@ def _book_btn(m: MatchedClass) -> str:
 
 def _monthly_reminder_section(all_bookings: list, month_start, today, monthly_studios: list) -> str:
     """Show a reminder pill for each monthly studio if not yet visited this month."""
+    from src.config import MONTHLY_STUDIOS_DONE
     labels = {"othership": "Othership", "stretch": "Stretch*d"}
     items = []
     for keyword in monthly_studios:
-        done = any(
-            keyword in b.studio_name.lower() and month_start <= b.dt.date() <= today
-            for b in all_bookings if b.completed
-        )
+        # Manual override in config (these studios aren't booked through Wellhub)
+        done = any(keyword in d.lower() for d in MONTHLY_STUDIOS_DONE)
         label = labels.get(keyword, keyword.title())
         if done:
             badge = (f'<span style="background:#d1fae5;color:#065f46;font-size:11px;font-weight:700;'
@@ -408,7 +407,7 @@ def _extra_section(slots: list, booked_dates: set | None = None) -> str:
     return f"""
       <div class="sec">
         <p class="sec-title">🔄 Also available — backup studios</p>
-        <table>
+        <table style="font-size:13px">
           <thead><tr><th>Date</th><th>Time</th><th>Class</th><th></th></tr></thead>
           <tbody>{rows}</tbody>
         </table>
@@ -419,27 +418,27 @@ def _extra_section(slots: list, booked_dates: set | None = None) -> str:
 MUSCLE_QUOTES = {
     "Outer Glutes": [
         "🍑 OUTER GLUTES DAY — time to build that shelf, queen!",
-        "🍑 Outer glutes don't sculpt themselves. LET'S GO.",
         "💅 Side booty szn is TODAY. Show up.",
         "🔥 Those outer glutes aren't gonna grow by themselves, babe.",
         "👑 Outer glute day is basically a royal decree. ATTEND.",
+        "✨ Outer glutes: the secret weapon. Deploy them.",
     ],
     "Center Glutes": [
         "🍑 CENTER GLUTES — the main character of your booty. Go!",
         "💥 Dead center, dead serious. Center glutes TODAY.",
         "👸 Your center glutes are calling. Pick UP.",
         "🔥 Center glutes: the foundation of every great booty. Build it.",
-        "💪 Middle child energy? Not your glutes. Center glutes DAY.",
+        "💪 Center stage belongs to your glutes today. Own it.",
     ],
     "Leg Wrap": [
         "⚡ LEG WRAP DAY — wrap it up and burn it DOWN.",
         "🦵 Legs, baby. Wrap 'em. Burn 'em. Slay.",
-        "🔥 Leg wrap szn is EVERY szn. Get after it.",
         "💅 Those legs aren't gonna wrap themselves. LET'S GO.",
         "👑 Leg wrap queen. That's YOU. Now move.",
+        "🔥 Leg wrap day hits different. You already know.",
     ],
     "Hamstrings": [
-        "🔥 HAMSTRING DAY — the back of your legs called and they want ATTENTION.",
+        "🔥 HAMSTRING DAY — the back of your legs want ATTENTION.",
         "💪 Hamstrings: the unsung hero of a great booty. TODAY is their day.",
         "🦵 Back of the leg, front of the line. Hamstrings GO.",
         "✨ Strong hammies = strong everything. Show up.",
@@ -460,24 +459,22 @@ FALLBACK_QUOTES = [
     "🔥 Sweat now, slay later.",
     "👑 No one built an empire by skipping leg day.",
     "💪 She believed she could, so she squatted.",
-    "🍑 That booty isn't gonna build itself. Let's go.",
     "💃 Shake what solidcore gave ya.",
     "🔥 Pain is temporary. Glute gains are forever.",
     "👸 Queens don't skip. Queens book.",
     "💫 You didn't wake up to be mediocre, babe.",
     "💎 She's a ten. She also never misses solidcore.",
-    "🔥 Hot girl walk? Try hot girl SOLIDCORE.",
     "✨ Sore today, snatched tomorrow.",
-    "💪 She woke up like this. Then she worked out.",
+    "🌟 Hot girl walk? Try hot girl SOLIDCORE.",
+    "🎀 Pretty girls lift heavy. It's science.",
+    "💥 Your future booty is thanking you right now.",
 ]
 
 
 def _daily_quote(today, focus_map: dict | None = None) -> str:
     import hashlib
-    # Use tomorrow's muscle focus to pick a relevant quote
-    from datetime import timedelta
-    tomorrow = today + timedelta(days=1)
-    muscles = (focus_map or {}).get(tomorrow, [])
+    # Use TODAY's muscle focus — email arrives in the morning, quote matches today's vibe
+    muscles = (focus_map or {}).get(today, [])
     # Find first muscle that has a dedicated quote bank
     quotes = None
     for muscle in muscles:
