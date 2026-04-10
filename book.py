@@ -64,19 +64,31 @@ def main() -> None:
 
     from src.wellhub_api import book_class
 
-    results: dict[str, bool] = {}
+    results: dict[str, dict] = {}
+    failure_reasons: list[str] = []
+
     for slot_id, class_id_gql, partner_id in parsed:
         log.info("Booking slot %s ...", slot_id)
-        success = book_class(
-            class_id=slot_id,
-            class_id_gql=class_id_gql,
-            partner_id=partner_id,
-        )
-        results[slot_id] = success
-        log.info("  %s → %s", slot_id, "✓ booked" if success else "✗ FAILED")
+        try:
+            ok = book_class(
+                class_id=slot_id,
+                class_id_gql=class_id_gql,
+                partner_id=partner_id,
+            )
+            results[slot_id] = {"success": ok, "reason": None}
+            log.info("  %s → %s", slot_id, "✓ booked" if ok else "✗ FAILED")
+            if not ok:
+                failure_reasons.append(f"{slot_id}: unexpected failure (no restriction returned)")
+        except RuntimeError as re:
+            key = getattr(re, "restriction_key", str(re))
+            msg = getattr(re, "restriction_msg", "")
+            results[slot_id] = {"success": False, "reason": key, "msg": msg}
+            human = key.split(".")[-2] if "." in key else key  # e.g. "usage_exceeds_plan"
+            log.error("  %s → ✗ RESTRICTED: %s (%s)", slot_id, human, msg)
+            failure_reasons.append(f"{slot_id}: {human} — {msg}")
 
-    booked = [cid for cid, ok in results.items() if ok]
-    failed = [cid for cid, ok in results.items() if not ok]
+    booked = [cid for cid, r in results.items() if r["success"]]
+    failed = [cid for cid, r in results.items() if not r["success"]]
     log.info("Done. Booked: %d / %d", len(booked), len(parsed))
 
     with open("booking_results.json", "w") as f:
@@ -84,7 +96,7 @@ def main() -> None:
 
     if failed:
         with open("booking_failures.txt", "w") as f:
-            f.write("\n".join(failed))
+            f.write("\n".join(failure_reasons))
         log.warning("Failed IDs: %s", ", ".join(failed))
         sys.exit(1)
 

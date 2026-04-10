@@ -469,24 +469,40 @@ def book_class(
             title = restriction.get("title", {}).get("key", "unknown")
             msg   = restriction.get("message", {}).get("key", "")
             log.error("Booking restricted: %s — %s", title, msg)
-            return False
+            # Store restriction key on the exception chain for caller to surface
+            err = RuntimeError(f"RESTRICTION:{title}")
+            err.restriction_key = title
+            err.restriction_msg = msg
+            raise err
         else:
             log.error("Unexpected booking response: %s", results)
             return False
 
+    except RuntimeError:
+        raise  # re-raise restriction errors so caller can capture the key
     except Exception as exc:
         log.error("Booking error for slot %s: %s", class_id, exc)
         return False
 
 
+# classSlotDetails schema changed: the old `slot { classId partner { id } }` field
+# no longer exists.  classId is now in trackData.params.class_id (JSONObject scalar)
+# and partnerId is in heading.navigationHeader.partnerId.
 SLOT_DETAILS_QUERY = """
 query classSlotDetailsQuery($input: ClassSlotDetailsInput!) {
   classSlotDetails(input: $input) {
-    slot {
-      id
-      classId
-      partner { id }
+    trackData {
+      params
+      __typename
     }
+    heading {
+      navigationHeader {
+        partnerId
+        __typename
+      }
+      __typename
+    }
+    __typename
   }
 }
 """
@@ -812,11 +828,21 @@ def _get_slot_details(slot_id: str) -> Optional[dict]:
             },
             "query": SLOT_DETAILS_QUERY,
         }])
-        slot = results[0].get("data", {}).get("classSlotDetails", {}).get("slot", {})
-        return {
-            "classId":   slot.get("classId"),
-            "partnerId": slot.get("partner", {}).get("id"),
-        }
+        csd = results[0].get("data", {}).get("classSlotDetails", {}) or {}
+        # New schema: classId lives in trackData.params.class_id (JSONObject scalar)
+        # partnerId lives in heading.navigationHeader.partnerId
+        track_params = (csd.get("trackData") or {}).get("params") or {}
+        class_id  = str(track_params.get("class_id", ""))
+        partner_id = (
+            (csd.get("heading") or {})
+            .get("navigationHeader", {})
+            .get("partnerId", "")
+        ) or str(track_params.get("partner_id", ""))
+        if not class_id or not partner_id:
+            log.warning("classSlotDetails returned no classId/partnerId for slot %s — response: %s",
+                        slot_id, csd)
+            return None
+        return {"classId": class_id, "partnerId": partner_id}
     except Exception as exc:
         log.error("Slot details error: %s", exc)
         return None
