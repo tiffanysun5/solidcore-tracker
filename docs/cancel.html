@@ -47,6 +47,22 @@
   #status.success { background: #d1fae5; color: #065f46; }
   #status.error   { background: #fee2e2; color: #991b1b; }
   #status.loading { background: #f0f9ff; color: #0369a1; }
+  #alternatives { display: none; margin-top: 20px; }
+  #alternatives h2 { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #111; }
+  .alt-card {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px;
+    margin-bottom: 8px; background: #fafafa;
+  }
+  .alt-info { font-size: 13px; }
+  .alt-time { font-weight: 600; color: #111; }
+  .alt-studio { color: #6b7280; font-size: 12px; margin-top: 1px; }
+  .alt-spots { font-size: 11px; color: #059669; font-weight: 600; }
+  .alt-btn {
+    background: #111; color: #fff; text-decoration: none;
+    padding: 7px 14px; border-radius: 6px; font-size: 12px;
+    font-weight: 600; white-space: nowrap;
+  }
 </style>
 </head>
 <body>
@@ -76,6 +92,10 @@
     <div class="details" id="details"></div>
     <button class="btn" id="cancel-btn" onclick="cancelClass()">Cancel this class →</button>
     <div id="status"></div>
+    <div id="alternatives">
+      <h2>🍑 Same-day alternatives</h2>
+      <div id="alt-list"></div>
+    </div>
     <br>
     <button class="change-token" onclick="showSetup()">Change GitHub token</button>
   </div>
@@ -89,6 +109,46 @@
   const studio       = params.get('studio')         || '';
   const dt           = params.get('dt')             || '';
   const repo         = params.get('repo')           || 'tiffanysun5/solidcore-tracker';
+
+  // Parse same-day alternatives (JSON array)
+  let alts = [];
+  try { alts = JSON.parse(params.get('alts') || '[]'); } catch (_) {}
+
+  function buildBookUrl(alt) {
+    const [owner2, , repoName2] = repo.split('/');
+    const ghOwner = repo.split('/')[0];
+    const ghRepo  = repo.split('/').slice(1).join('/');
+    const p = new URLSearchParams({
+      class_id:     alt.cid || '',
+      class_id_gql: alt.cgql || '',
+      partner_id:   alt.pid || '',
+      studio:       alt.s || '',
+      instructor:   alt.i || '',
+      dt:           alt.t || '',
+      muscles:      '',
+      repo:         repo,
+    });
+    return `https://${ghOwner}.github.io/${ghRepo}/book.html?${p.toString()}`;
+  }
+
+  function showAlternatives() {
+    if (!alts.length) return;
+    const container = document.getElementById('alt-list');
+    container.innerHTML = alts.map(a => {
+      const spotsHtml = (a.sp != null)
+        ? `<span class="alt-spots">${a.sp} spot${a.sp !== 1 ? 's' : ''}</span>`
+        : '';
+      return `
+        <div class="alt-card">
+          <div class="alt-info">
+            <div class="alt-time">${escHtml(a.t)}</div>
+            <div class="alt-studio">${escHtml(a.s)} · ${escHtml(a.i)} ${spotsHtml}</div>
+          </div>
+          <a class="alt-btn" href="${buildBookUrl(a)}">Book →</a>
+        </div>`;
+    }).join('');
+    document.getElementById('alternatives').style.display = 'block';
+  }
 
   function init() {
     const token = localStorage.getItem(TOKEN_KEY);
@@ -175,6 +235,7 @@
       if (conclusion === 'success') {
         btn.textContent = '✓ Cancelled';
         setStatus('success', `✅ <strong>Booking cancelled!</strong><br>${studio} · ${dt}`);
+        showAlternatives();
       } else if (conclusion === 'failure') {
         btn.disabled = false; btn.textContent = 'Try again →';
         setStatus('error', `❌ Cancellation failed. <a href="https://github.com/${repo}/actions/workflows/cancel.yml" target="_blank">See logs</a>.`);

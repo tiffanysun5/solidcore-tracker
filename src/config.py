@@ -27,7 +27,7 @@ BACKUP_START_HOUR = 9
 BACKUP_END_HOUR   = 19  # exclusive (7pm cutoff)
 
 BOOKING_WINDOW_DAYS = 14
-WEEKLY_CLASS_LIMIT  = 3   # max solidcore (premium) classes per week
+WEEKLY_CLASS_LIMIT  = 4   # max solidcore (premium) classes per week
 
 # Extra studios shown as backup at bottom of email — standard (1/day) classes, not counted in quota.
 EXTRA_STUDIOS = {

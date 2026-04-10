@@ -150,11 +150,28 @@ def _build_email(
             studio = b.studio_name.replace("[solidcore] ", "").replace(", NY", "")
             cancel_btn = ""
             if b.attendance_id:
+                # Build same-day alternatives (other Solidcore slots on the same calendar day)
+                same_day_alts = []
+                for s in slots:
+                    if (s.date == b.dt.date()
+                            and (s.dt.hour, s.dt.minute) != (b.dt.hour, b.dt.minute)):
+                        same_day_alts.append({
+                            "t":   s.time_str,
+                            "s":   s.studio,
+                            "i":   s.instructor,
+                            "sp":  s.available_spots,
+                            "cid": s.wellhub_class_id,
+                            "cgql": s.class_id_gql,
+                            "pid": s.partner_id,
+                        })
+                same_day_alts.sort(key=lambda x: x["t"])
+                import json as _json
                 cp = urllib.parse.urlencode({
                     "attendance_id": b.attendance_id,
                     "studio":        studio,
                     "dt":            f"{b.dt.strftime('%a %b %-d')} {b.dt.strftime('%-I:%M %p')}",
                     "repo":          GITHUB_REPO,
+                    "alts":          _json.dumps(same_day_alts, separators=(",", ":")),
                 })
                 cancel_url = f"https://{owner}.github.io/{repo_name}/cancel.html?{cp}"
                 cancel_btn = f' <a href="{cancel_url}" style="font-size:11px;color:#dc2626;text-decoration:none;border:1px solid #dc2626;border-radius:4px;padding:2px 6px;white-space:nowrap">Cancel</a>'
@@ -375,15 +392,15 @@ def _extra_section(slots: list, booked_dates: set | None = None) -> str:
 
     rows = ""
     for studio, studio_slots in by_studio.items():
-        rows += (f'<tr><td colspan="4" style="padding:5px 8px 3px;font-size:9px;'
+        rows += (f'<tr><td colspan="4" style="padding:4px 8px 2px;font-size:9px;'
                  f'font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
-                 f'color:#6b7280;background:#f9fafb;border-bottom:1px solid #e5e7eb">'
+                 f'color:#9ca3af;background:#f9fafb;border-bottom:1px solid #e5e7eb">'
                  f'{studio}</td></tr>')
         for s in studio_slots:
             class_name = getattr(s, '_class_name', '') or s.studio
             is_pref = PREFERRED_START_HOUR <= s.dt.hour < PREFERRED_END_HOUR
-            time_color = "#111" if is_pref else "#6b7280"
-            instr = (f'  <span style="color:#9ca3af">· {s.instructor}</span>'
+            time_color = "#374151" if is_pref else "#9ca3af"
+            instr = (f'&nbsp;<span style="color:#9ca3af;font-size:11px">· {s.instructor}</span>'
                      if s.instructor else '')
             owner, _, repo = GITHUB_REPO.partition("/")
             params = urllib.parse.urlencode({
@@ -393,31 +410,37 @@ def _extra_section(slots: list, booked_dates: set | None = None) -> str:
                 "dt": f"{s.date_str} {s.time_str}", "muscles": "", "repo": GITHUB_REPO,
             })
             book_url = f"https://{owner}.github.io/{repo}/book.html?{params}"
-            btn = f'<a class="book-btn" href="{book_url}">Book →</a>'
+            btn = (f'<a href="{book_url}" style="display:inline-block;background:#111;color:#fff;'
+                   f'padding:3px 9px;border-radius:5px;text-decoration:none;font-size:10px;'
+                   f'font-weight:600;white-space:nowrap">Book →</a>')
             spots = getattr(s, "_available_spots", None)
             spots_str = ""
             if spots is not None:
                 sc = "#059669" if spots >= 5 else ("#f59e0b" if spots >= 2 else "#ef4444")
-                spots_str = (f' <span style="color:{sc};font-weight:600">'
+                spots_str = (f'&nbsp;<span style="color:{sc};font-size:10px;font-weight:600">'
                              f'{spots} spot{"s" if spots != 1 else ""}</span>')
             rows += (
                 f'<tr>'
-                f"<td style='white-space:nowrap;padding:7px 8px;border-bottom:1px solid #f5f5f5;font-size:13px'>{s.date_str}</td>"
-                f"<td style='white-space:nowrap;padding:7px 8px;border-bottom:1px solid #f5f5f5;color:{time_color};font-size:13px'>{s.time_str}</td>"
-                f"<td style='padding:7px 8px;border-bottom:1px solid #f5f5f5;color:#111;font-size:13px'>{class_name}{instr}{spots_str}</td>"
-                f"<td style='padding:7px 8px;border-bottom:1px solid #f5f5f5;font-size:13px'>{btn}</td>"
+                f'<td style="white-space:nowrap;padding:5px 8px;border-bottom:1px solid #f5f5f5;'
+                f'font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:11px;color:#6b7280">{s.date_str}</td>'
+                f'<td style="white-space:nowrap;padding:5px 8px;border-bottom:1px solid #f5f5f5;'
+                f'font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:11px;color:{time_color}">{s.time_str}</td>'
+                f'<td style="padding:5px 8px;border-bottom:1px solid #f5f5f5;'
+                f'font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:11px;color:#374151">{class_name}{instr}{spots_str}</td>'
+                f'<td style="padding:5px 8px;border-bottom:1px solid #f5f5f5">{btn}</td>'
                 f'</tr>'
             )
 
     return (
-        f'<div class="sec" style="font-size:13px">'
-        f'<p class="sec-title">🔄 Also available — backup studios</p>'
-        f'<table style="width:100%;border-collapse:collapse;font-size:13px">'
+        f'<div style="padding:12px 28px 14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif">'
+        f'<p style="font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;'
+        f'color:#aaa;margin:0 0 8px">🔄 Also available — backup studios</p>'
+        f'<table style="width:100%;border-collapse:collapse">'
         f'<thead><tr>'
-        f'<th style="text-align:left;color:#666;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:5px 8px;border-bottom:2px solid #eee">Date</th>'
-        f'<th style="text-align:left;color:#666;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:5px 8px;border-bottom:2px solid #eee">Time</th>'
-        f'<th style="text-align:left;color:#666;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:5px 8px;border-bottom:2px solid #eee">Class</th>'
-        f'<th style="border-bottom:2px solid #eee"></th>'
+        f'<th style="text-align:left;color:#aaa;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.5px;padding:4px 8px;border-bottom:1px solid #eee;font-family:-apple-system,BlinkMacSystemFont,sans-serif">Date</th>'
+        f'<th style="text-align:left;color:#aaa;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.5px;padding:4px 8px;border-bottom:1px solid #eee;font-family:-apple-system,BlinkMacSystemFont,sans-serif">Time</th>'
+        f'<th style="text-align:left;color:#aaa;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.5px;padding:4px 8px;border-bottom:1px solid #eee;font-family:-apple-system,BlinkMacSystemFont,sans-serif">Class</th>'
+        f'<th style="border-bottom:1px solid #eee"></th>'
         f'</tr></thead>'
         f'<tbody>{rows}</tbody>'
         f'</table>'
