@@ -6,9 +6,9 @@ METHOD:PUBLISH
 X-WR-CALNAME:Solidcore Classes
 X-WR-TIMEZONE:America/New_York
 BEGIN:VEVENT
-UID:d2958220-cb09-43db-8488-94cdbff9b9d5@solidcore-tracker
-DTSTART;TZID=America/New_York:20260412T130000
-DTEND;TZID=America/New_York:20260412T135000
+UID:aa60b2ad-cc48-420a-9bee-601b46fb6bb0@solidcore-tracker
+DTSTART;TZID=America/New_York:20260411T160000
+DTEND;TZID=America/New_York:20260411T165000
 SUMMARY:[solidcore] Signature50: Full Body
 LOCATION:155 W 23rd St, New York, NY 10011
 DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
