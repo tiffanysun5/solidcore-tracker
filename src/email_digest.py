@@ -107,13 +107,14 @@ def _build_email(
            if other_matches else "")
     )
 
-    # Weekly quota — solidcore only (premium class limit is 4/week)
+    # Weekly quota — solidcore only (premium class limit per week)
+    from src.config import WEEKLY_CLASS_LIMIT
     solidcore_bookings = [b for b in all_bookings if "[solidcore]" in b.studio_name.lower()]
     this_mon = today - timedelta(days=today.weekday())
     this_sun = this_mon + timedelta(days=6)
     next_mon = this_sun + timedelta(days=1)
     next_sun = next_mon + timedelta(days=6)
-    LIMIT = 4
+    LIMIT = WEEKLY_CLASS_LIMIT
 
     def wcount(bkgs, mon, sun):
         return sum(1 for b in bkgs if mon <= b.dt.date() <= sun)
@@ -219,14 +220,17 @@ def _build_email(
     # All Solidcore classes — next 5 days, no filters
     all_slots_sec = _all_classes_section(slots, today, booked_dates_set, focus_map)
 
-    quote = _daily_quote(today, focus_map)
+    quote_html = ""
+    if upcoming_bookings:
+        quote = _daily_quote(today, focus_map)
+        quote_html = f"""<div style="background:#fdf2f8;text-align:center;padding:18px 20px 14px">
+    <span style="font-size:26px;margin-right:8px">🍑</span><span style="font-size:22px;font-weight:900;color:#ec4899;letter-spacing:1px;text-transform:uppercase;font-style:italic;text-shadow:2px 2px 0px #fbcfe8">{quote}</span><span style="font-size:26px;margin-left:8px">🍑</span>
+  </div>"""
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>{CSS}</style></head>
 <body><div class="wrap">
   <div class="hdr"><h1>🍑 Solidcore Tracker</h1><p>{datetime.now().strftime('%A, %B %-d, %Y')}</p></div>
-  <div style="background:#fdf2f8;text-align:center;padding:18px 20px 14px">
-    <span style="font-size:26px;margin-right:8px">🍑</span><span style="font-size:22px;font-weight:900;color:#ec4899;letter-spacing:1px;text-transform:uppercase;font-style:italic;text-shadow:2px 2px 0px #fbcfe8">{quote}</span><span style="font-size:26px;margin-left:8px">🍑</span>
-  </div>
+  {quote_html}
   {monthly_sec}
   {booked_sec}
   {new_sec}
@@ -371,7 +375,7 @@ def _extra_section(slots: list, booked_dates: set | None = None) -> str:
 
     rows = ""
     for studio, studio_slots in by_studio.items():
-        rows += (f'<tr><td colspan="4" style="padding:5px 8px 3px;font-size:10px;'
+        rows += (f'<tr><td colspan="4" style="padding:5px 8px 3px;font-size:9px;'
                  f'font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
                  f'color:#6b7280;background:#f9fafb;border-bottom:1px solid #e5e7eb">'
                  f'{studio}</td></tr>')
@@ -405,15 +409,21 @@ def _extra_section(slots: list, booked_dates: set | None = None) -> str:
                 f'</tr>'
             )
 
-    return f"""
-      <div class="sec" style="font-size:13px">
-        <p class="sec-title">🔄 Also available — backup studios</p>
-        <table style="font-size:13px;width:100%;border-collapse:collapse">
-          <thead><tr><th style="font-size:11px">Date</th><th style="font-size:11px">Time</th><th style="font-size:11px">Class</th><th></th></tr></thead>
-          <tbody>{rows}</tbody>
-        </table>
-      </div>
-      <div class="div"></div>"""
+    return (
+        f'<div class="sec" style="font-size:13px">'
+        f'<p class="sec-title">🔄 Also available — backup studios</p>'
+        f'<table style="width:100%;border-collapse:collapse;font-size:13px">'
+        f'<thead><tr>'
+        f'<th style="text-align:left;color:#666;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:5px 8px;border-bottom:2px solid #eee">Date</th>'
+        f'<th style="text-align:left;color:#666;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:5px 8px;border-bottom:2px solid #eee">Time</th>'
+        f'<th style="text-align:left;color:#666;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:5px 8px;border-bottom:2px solid #eee">Class</th>'
+        f'<th style="border-bottom:2px solid #eee"></th>'
+        f'</tr></thead>'
+        f'<tbody>{rows}</tbody>'
+        f'</table>'
+        f'</div>'
+        f'<div class="div"></div>'
+    )
 
 
 MUSCLE_QUOTES = {
