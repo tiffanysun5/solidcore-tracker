@@ -6,10 +6,19 @@ METHOD:PUBLISH
 X-WR-CALNAME:Solidcore Classes
 X-WR-TIMEZONE:America/New_York
 BEGIN:VEVENT
-UID:aa60b2ad-cc48-420a-9bee-601b46fb6bb0@solidcore-tracker
-DTSTART;TZID=America/New_York:20260411T160000
-DTEND;TZID=America/New_York:20260411T165000
-SUMMARY:[solidcore] Signature50: Full Body
+UID:30db620b-07f0-4071-b9c0-288350a9b94d@solidcore-tracker
+DTSTART;TZID=America/New_York:20260411T130000
+DTEND;TZID=America/New_York:20260411T135000
+SUMMARY:[solidcore] ROK YOUR BODY Sculpt Full Body 1.0
+LOCATION:BODYROK - Union Square
+DESCRIPTION:Studio: BODYROK - Union Square\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:77f59d4b-f6a9-4760-9d60-0d171657c9c5@solidcore-tracker
+DTSTART;TZID=America/New_York:20260413T130500
+DTEND;TZID=America/New_York:20260413T135500
+SUMMARY:[solidcore] Off-Peak Signature50: Full Body
 LOCATION:155 W 23rd St, New York, NY 10011
 DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
@@ -18,15 +27,6 @@ BEGIN:VEVENT
 UID:dd341c94-c216-485d-bcf5-4a28bf52bb14@solidcore-tracker
 DTSTART;TZID=America/New_York:20260414T121500
 DTEND;TZID=America/New_York:20260414T130500
-SUMMARY:[solidcore] Signature50: Full Body
-LOCATION:155 W 23rd St, New York, NY 10011
-DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
-STATUS:CONFIRMED
-END:VEVENT
-BEGIN:VEVENT
-UID:62235df3-5654-4aef-ae7c-236fc9222998@solidcore-tracker
-DTSTART;TZID=America/New_York:20260416T101500
-DTEND;TZID=America/New_York:20260416T110500
 SUMMARY:[solidcore] Signature50: Full Body
 LOCATION:155 W 23rd St, New York, NY 10011
 DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
@@ -46,6 +46,15 @@ UID:3422c289-c0ab-4a2b-aecc-e602018c5a57@solidcore-tracker
 DTSTART;TZID=America/New_York:20260422T120500
 DTEND;TZID=America/New_York:20260422T125500
 SUMMARY:[solidcore] Signature50: Full Body
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:6335626b-318e-48aa-b89e-e25589f57bdb@solidcore-tracker
+DTSTART;TZID=America/New_York:20260424T120500
+DTEND;TZID=America/New_York:20260424T125500
+SUMMARY:[solidcore] Focus50: Core + Obliques + Upper Body
 LOCATION:155 W 23rd St, New York, NY 10011
 DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
