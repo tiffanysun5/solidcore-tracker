@@ -458,7 +458,12 @@ def book_class(
             "query": BOOKING_MUTATION,
         }])
 
-        data = results[0].get("data", {}).get("bookingAttendance", {})
+        # data can be null when Wellhub returns a top-level GraphQL error
+        raw   = results[0]
+        errors = raw.get("errors")
+        if errors:
+            log.error("GraphQL errors for slot %s: %s", class_id, errors)
+        data = (raw.get("data") or {}).get("bookingAttendance") or {}
         uid  = data.get("uniqueAttendanceIdentifier")
         restriction = data.get("restriction")
 
@@ -469,10 +474,16 @@ def book_class(
             title = restriction.get("title", {}).get("key", "unknown")
             msg   = restriction.get("message", {}).get("key", "")
             log.error("Booking restricted: %s — %s", title, msg)
-            # Store restriction key on the exception chain for caller to surface
             err = RuntimeError(f"RESTRICTION:{title}")
             err.restriction_key = title
             err.restriction_msg = msg
+            raise err
+        elif errors:
+            # GraphQL-level error (data=null) — surface the error message
+            err_msg = errors[0].get("message", "unknown GraphQL error") if errors else "unknown"
+            err = RuntimeError(f"GRAPHQL_ERROR:{err_msg}")
+            err.restriction_key = f"graphql_error"
+            err.restriction_msg = err_msg
             raise err
         else:
             log.error("Unexpected booking response: %s", results)
