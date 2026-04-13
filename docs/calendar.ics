@@ -15,12 +15,21 @@ DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
-UID:dd341c94-c216-485d-bcf5-4a28bf52bb14@solidcore-tracker
-DTSTART;TZID=America/New_York:20260414T121500
-DTEND;TZID=America/New_York:20260414T130500
-SUMMARY:[solidcore] Signature50: Full Body
+UID:280fa05f-e202-4959-ae3d-da216e5402b9@solidcore-tracker
+DTSTART;TZID=America/New_York:20260414T120500
+DTEND;TZID=America/New_York:20260414T125500
+SUMMARY:[solidcore] Focus50: Core + Lower + Upper Body
 LOCATION:155 W 23rd St, New York, NY 10011
 DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:d2cc23e9-43bb-4409-b02a-9cf886e94fb1@solidcore-tracker
+DTSTART;TZID=America/New_York:20260415T113000
+DTEND;TZID=America/New_York:20260415T122000
+SUMMARY:[solidcore] Nofar Method Flatiron Pilates Class
+LOCATION:Nofar Method - Flatiron
+DESCRIPTION:Studio: Nofar Method - Flatiron\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -33,6 +42,24 @@ DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
+UID:25efefa4-d395-441b-8d43-00f0e83886e9@solidcore-tracker
+DTSTART;TZID=America/New_York:20260419T153000
+DTEND;TZID=America/New_York:20260419T162000
+SUMMARY:[solidcore] Signature50: Full Body
+LOCATION:[solidcore] Chicago - Streeterville
+DESCRIPTION:Studio: Chicago - Streeterville\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:635d106d-ee88-48e3-b851-b746ab6c0d4f@solidcore-tracker
+DTSTART;TZID=America/New_York:20260420T123000
+DTEND;TZID=America/New_York:20260420T132000
+SUMMARY:[solidcore] Off-Peak Signature50: Full Body
+LOCATION:[solidcore] Chicago - Streeterville
+DESCRIPTION:Studio: Chicago - Streeterville\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
 UID:3422c289-c0ab-4a2b-aecc-e602018c5a57@solidcore-tracker
 DTSTART;TZID=America/New_York:20260422T120500
 DTEND;TZID=America/New_York:20260422T125500
@@ -42,10 +69,28 @@ DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
+UID:5919f333-bd1f-4aae-b462-7b1885f70c70@solidcore-tracker
+DTSTART;TZID=America/New_York:20260423T101500
+DTEND;TZID=America/New_York:20260423T110500
+SUMMARY:[solidcore] Signature50: Full Body | Hannah Montana x Miley Cyrus
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
 UID:6335626b-318e-48aa-b89e-e25589f57bdb@solidcore-tracker
 DTSTART;TZID=America/New_York:20260424T120500
 DTEND;TZID=America/New_York:20260424T125500
 SUMMARY:[solidcore] Focus50: Core + Obliques + Upper Body
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:dc5be8e0-0c1f-4a9f-a173-fe5131a49a6a@solidcore-tracker
+DTSTART;TZID=America/New_York:20260427T153000
+DTEND;TZID=America/New_York:20260427T162000
+SUMMARY:[solidcore] Signature50: Full Body
 LOCATION:155 W 23rd St, New York, NY 10011
 DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
