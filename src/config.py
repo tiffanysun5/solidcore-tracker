@@ -44,3 +44,42 @@ EXTRA_STUDIOS = {
 MONTHLY_STUDIOS = ["othership", "stretch"]
 
 NOTIFY_EMAIL = "tiffanysun27@gmail.com"
+
+# Travel cities — partner IDs for Solidcore locations in each city.
+# Timezone is the local tz used to display class times.
+# Hardcoded travel windows (date strings) are used as fallback when
+# GOOGLE_CALENDAR_ICS_URL secret is not set.
+TRAVEL_CITIES: dict[str, dict] = {
+    "Chicago": {
+        "timezone": "America/Chicago",
+        "partners": {
+            "River North":    "c1b09896-3bd0-4d08-b89e-d7d9408275fb",
+            "Streeterville":  "90202013-f8b0-4623-9b4d-9abb72bd87be",
+            "West Loop":      "5d57bda0-ccb8-4ad1-a262-8080e727cb75",
+            "Wicker Park":    "5c16faa7-2f41-4a18-a878-6220681b0f68",
+            "Boystown":       "5c45a8f9-adcb-4985-aabc-96b00234298f",
+            "Lincoln Park":   "ce72eb32-7e9f-4b8b-a7e7-8f8c7ef4861a",
+        },
+        # Fallback hardcoded windows when no ICS available (ISO date strings, inclusive)
+        "hardcoded_windows": [
+            ("2026-04-18", "2026-04-21"),
+        ],
+    },
+    "Boston": {
+        "timezone": "America/New_York",
+        "partners": {
+            "Fenway":            "ac500bc5-8488-4a41-ac5d-7e96466aba01",
+            "Boston SE":         "84749896-1bf6-4169-8f5a-1b7fbdb101fe",
+            "North Station":     "a03f9fae-b2fe-49f7-b773-62f5c6506f59",
+            "Seaport":           "07bbd946-312d-4dc6-ace2-9c4ff7ff385b",
+            "Arsenal Yards":     "41624ab6-f7c3-417d-a704-2c856f6cbb0c",
+            "Chestnut Hill":     "d16af206-af1a-4cd9-9c87-013de5c25fec",
+            "Dedham":            "5f3a0666-85d6-42d2-a9e9-1f5700f91486",
+            "Hingham":           "9b2de8de-da34-4e8b-8f08-a8972eeda332",
+            "Burlington":        "ed6ffbb6-e93c-4747-bc7c-388a79f9eac1",
+        },
+        "hardcoded_windows": [
+            ("2026-04-25", "2026-04-25"),
+        ],
+    },
+}

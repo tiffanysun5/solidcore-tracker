@@ -67,10 +67,14 @@ def send_digest(
     slot_by_id:        dict | None = None,
     all_slots:         list | None = None,
     new_day_all:       list | None = None,
+    travel_city:       str | None = None,
+    travel_slots:      list | None = None,
 ) -> None:
     subject, html_body = _build_email(matches, all_bookings, upcoming_bookings, new_day,
                                       extra_slots or [], focus_map or {}, slot_by_id or {},
-                                      all_slots or [], new_day_all or [])
+                                      all_slots or [], new_day_all or [],
+                                      travel_city=travel_city,
+                                      travel_slots=travel_slots or [])
     _send(to_email, subject, html_body)
 
 
@@ -84,12 +88,15 @@ def _build_email(
     slot_by_id:        dict | None = None,
     slots:             list | None = None,
     new_day_all:       list | None = None,
+    travel_city:       str | None = None,
+    travel_slots:      list | None = None,
 ) -> tuple[str, str]:
     extra_slots  = extra_slots  or []
     focus_map    = focus_map    or {}
     slot_by_id   = slot_by_id   or {}
     slots        = slots        or []
     new_day_all  = new_day_all  or []
+    travel_slots = travel_slots or []
 
     from zoneinfo import ZoneInfo
     ny    = ZoneInfo("America/New_York")
@@ -237,6 +244,9 @@ def _build_email(
     # All Solidcore classes — next 5 days, no filters
     all_slots_sec = _all_classes_section(slots, today, booked_dates_set, focus_map)
 
+    # Travel section
+    travel_sec = _travel_section(travel_city, travel_slots) if travel_city and travel_slots else ""
+
     quote_html = ""
     if upcoming_bookings:
         quote = _daily_quote(today, focus_map)
@@ -252,6 +262,7 @@ def _build_email(
   {booked_sec}
   {new_sec}
   {other_sec}
+  {travel_sec}
   {extra_sec}
   {all_slots_sec}
   <div class="ftr">🍑 solidcore-tracker · muscle focus, instructor &amp; time (9am–7pm)</div>
@@ -594,6 +605,72 @@ def _all_classes_section(slots: list, today, booked_dates: set, focus_map: dict)
         </table>
       </div>
       <div class="div"></div>"""
+
+
+def _travel_section(city_name: str, slots: list) -> str:
+    """Compact table of Solidcore classes in the travel city — next 3 days."""
+    if not slots:
+        return ""
+
+    from collections import defaultdict
+    by_day: dict = defaultdict(list)
+    for s in slots:
+        by_day[s.date].append(s)
+
+    owner, _, repo = GITHUB_REPO.partition("/")
+    rows = ""
+    for d in sorted(by_day):
+        day_label = d.strftime("%a %b %-d")
+        rows += (
+            f'<tr><td colspan="4" style="padding:6px 8px 3px;font-size:11px;font-weight:700;'
+            f'letter-spacing:.5px;background:#f0f9ff;border-top:2px solid #bae6fd;'
+            f'border-bottom:1px solid #bae6fd;color:#0369a1">'
+            f'{day_label}</td></tr>'
+        )
+        for s in by_day[d]:
+            sp = s.available_spots
+            sc = "#059669" if sp >= 5 else ("#f59e0b" if sp >= 2 else "#ef4444")
+            spots_str = (f'<span style="color:{sc};font-size:10px;font-weight:600">'
+                         f'{sp} spot{"s" if sp != 1 else ""}</span>' if sp is not None else "")
+            instr = (f'<span style="color:#9ca3af;font-size:11px"> · {s.instructor}</span>'
+                     if s.instructor else "")
+            params = urllib.parse.urlencode({
+                "class_id": s.wellhub_class_id, "class_id_gql": s.class_id_gql,
+                "partner_id": s.partner_id, "studio": s.studio,
+                "instructor": s.instructor,
+                "dt": f"{s.date_str} {s.time_str}", "muscles": "", "repo": GITHUB_REPO,
+            })
+            book_url = f"https://{owner}.github.io/{repo}/book.html?{params}"
+            btn = (f'<a href="{book_url}" style="display:inline-block;background:#0369a1;color:#fff;'
+                   f'padding:3px 9px;border-radius:5px;text-decoration:none;font-size:10px;'
+                   f'font-weight:600;white-space:nowrap">Book →</a>')
+            rows += (
+                f'<tr>'
+                f'<td style="white-space:nowrap;padding:5px 8px;border-bottom:1px solid #f5f5f5;'
+                f'font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:11px;color:#374151">{s.time_str}</td>'
+                f'<td style="padding:5px 8px;border-bottom:1px solid #f5f5f5;'
+                f'font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:11px;color:#0369a1;font-weight:500">{s.studio}{instr}</td>'
+                f'<td style="padding:5px 8px;border-bottom:1px solid #f5f5f5">{spots_str}</td>'
+                f'<td style="padding:5px 8px;border-bottom:1px solid #f5f5f5">{btn}</td>'
+                f'</tr>'
+            )
+
+    return (
+        f'<div style="padding:12px 28px 14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f0f9ff">'
+        f'<p style="font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;'
+        f'color:#0369a1;margin:0 0 8px">✈️ Solidcore in {city_name}</p>'
+        f'<table style="width:100%;border-collapse:collapse">'
+        f'<thead><tr>'
+        f'<th style="text-align:left;color:#7dd3fc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.5px;padding:4px 8px;border-bottom:1px solid #bae6fd;font-family:-apple-system,BlinkMacSystemFont,sans-serif">Time (local)</th>'
+        f'<th style="text-align:left;color:#7dd3fc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.5px;padding:4px 8px;border-bottom:1px solid #bae6fd;font-family:-apple-system,BlinkMacSystemFont,sans-serif">Studio &amp; Instructor</th>'
+        f'<th style="text-align:left;color:#7dd3fc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.5px;padding:4px 8px;border-bottom:1px solid #bae6fd;font-family:-apple-system,BlinkMacSystemFont,sans-serif">Spots</th>'
+        f'<th style="border-bottom:1px solid #bae6fd"></th>'
+        f'</tr></thead>'
+        f'<tbody>{rows}</tbody>'
+        f'</table>'
+        f'</div>'
+        f'<div class="div"></div>'
+    )
 
 
 def _send(to_email: str, subject: str, html_body: str) -> None:

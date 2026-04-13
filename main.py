@@ -88,6 +88,18 @@ def main() -> None:
                                 require_muscle_match=False)
     log.info("  New day has %d classes (no muscle filter)", len(new_day_all))
 
+    # ── 5b. Travel detection ──────────────────────────────────────────────
+    log.info("Step 5b: Detecting travel")
+    from src.travel import get_travel_city, get_travel_slots
+    travel_city  = get_travel_city(today)
+    travel_slots: list = []
+    if travel_city:
+        log.info("  Traveling to %s — fetching local Solidcore slots", travel_city)
+        travel_slots = get_travel_slots(travel_city, today, days=3)
+        log.info("  Got %d travel slots in %s", len(travel_slots), travel_city)
+    else:
+        log.info("  Not traveling today")
+
     # ── 6. Send email ─────────────────────────────────────────────────────
     from src.config import NOTIFY_EMAIL
     from src.email_digest import send_digest
@@ -110,7 +122,8 @@ def main() -> None:
         }
         send_digest(matches, all_bookings, upcoming_bookings, new_day, NOTIFY_EMAIL,
                     extra_slots=extra_slots, focus_map=focus_map, slot_by_id=slot_by_id,
-                    all_slots=slots, new_day_all=new_day_all)
+                    all_slots=slots, new_day_all=new_day_all,
+                    travel_city=travel_city, travel_slots=travel_slots)
 
     log.info("Done.")
 
