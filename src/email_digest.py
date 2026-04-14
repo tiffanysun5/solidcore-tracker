@@ -157,19 +157,22 @@ def _build_email(
             studio = b.studio_name.replace("[solidcore] ", "").replace(", NY", "")
             cancel_btn = ""
             if b.attendance_id:
-                # Build same-day alternatives (other Solidcore slots on the same calendar day)
+                # Build same-day alternatives — ALL Solidcore slots that day except the booked one
+                day_muscles = focus_map.get(b.dt.date(), [])
+                muscles_str = " + ".join(day_muscles)
                 same_day_alts = []
                 for s in slots:
                     if (s.date == b.dt.date()
                             and (s.dt.hour, s.dt.minute) != (b.dt.hour, b.dt.minute)):
                         same_day_alts.append({
-                            "t":   s.time_str,
-                            "s":   s.studio,
-                            "i":   s.instructor,
-                            "sp":  s.available_spots,
-                            "cid": s.wellhub_class_id,
+                            "t":    s.time_str,
+                            "s":    s.studio,
+                            "i":    s.instructor,
+                            "sp":   s.available_spots,
+                            "cid":  s.wellhub_class_id,
                             "cgql": s.class_id_gql,
-                            "pid": s.partner_id,
+                            "pid":  s.partner_id,
+                            "m":    muscles_str,
                         })
                 same_day_alts.sort(key=lambda x: x["t"])
                 import json as _json

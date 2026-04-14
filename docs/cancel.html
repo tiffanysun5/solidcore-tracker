@@ -58,11 +58,18 @@
   .alt-time { font-weight: 600; color: #111; }
   .alt-studio { color: #6b7280; font-size: 12px; margin-top: 1px; }
   .alt-spots { font-size: 11px; color: #059669; font-weight: 600; }
+  .alt-muscles { font-size: 11px; color: #7c3aed; font-weight: 600; margin-top: 2px; }
   .alt-btn {
     background: #111; color: #fff; text-decoration: none;
     padding: 7px 14px; border-radius: 6px; font-size: 12px;
     font-weight: 600; white-space: nowrap;
   }
+  .help-btn {
+    display: inline-block; margin-top: 10px; font-size: 12px;
+    color: #6b7280; background: none; border: 1px solid #d1d5db;
+    border-radius: 6px; padding: 6px 12px; cursor: pointer; text-decoration: none;
+  }
+  .help-btn:hover { background: #f9fafb; }
 </style>
 </head>
 <body>
@@ -115,17 +122,16 @@
   try { alts = JSON.parse(params.get('alts') || '[]'); } catch (_) {}
 
   function buildBookUrl(alt) {
-    const [owner2, , repoName2] = repo.split('/');
     const ghOwner = repo.split('/')[0];
     const ghRepo  = repo.split('/').slice(1).join('/');
     const p = new URLSearchParams({
-      class_id:     alt.cid || '',
+      class_id:     alt.cid  || '',
       class_id_gql: alt.cgql || '',
-      partner_id:   alt.pid || '',
-      studio:       alt.s || '',
-      instructor:   alt.i || '',
-      dt:           alt.t || '',
-      muscles:      '',
+      partner_id:   alt.pid  || '',
+      studio:       alt.s    || '',
+      instructor:   alt.i    || '',
+      dt:           alt.t    || '',
+      muscles:      alt.m    || '',
       repo:         repo,
     });
     return `https://${ghOwner}.github.io/${ghRepo}/book.html?${p.toString()}`;
@@ -138,11 +144,15 @@
       const spotsHtml = (a.sp != null)
         ? `<span class="alt-spots">${a.sp} spot${a.sp !== 1 ? 's' : ''}</span>`
         : '';
+      const muscleHtml = a.m
+        ? `<div class="alt-muscles">💪 ${escHtml(a.m)}</div>`
+        : '';
       return `
         <div class="alt-card">
           <div class="alt-info">
             <div class="alt-time">${escHtml(a.t)}</div>
             <div class="alt-studio">${escHtml(a.s)} · ${escHtml(a.i)} ${spotsHtml}</div>
+            ${muscleHtml}
           </div>
           <a class="alt-btn" href="${buildBookUrl(a)}">Book →</a>
         </div>`;
@@ -238,13 +248,13 @@
         showAlternatives();
       } else if (conclusion === 'failure') {
         btn.disabled = false; btn.textContent = 'Try again →';
-        setStatus('error', `❌ Cancellation failed. <a href="https://github.com/${repo}/actions/workflows/cancel.yml" target="_blank">See logs</a>.`);
+        setStatus('error', `❌ Cancellation failed. <a href="https://github.com/${repo}/actions/workflows/cancel.yml" target="_blank">See logs</a>.${helpBtn('Cancel failed', `studio=${encodeURIComponent(studio)}&dt=${encodeURIComponent(dt)}&run=${runId}`)}`);
       } else {
         setStatus('loading', `Run ${conclusion || 'timed out'}. Check <a href="https://github.com/${repo}/actions/workflows/cancel.yml" target="_blank">GitHub Actions</a>.`);
       }
     } catch (err) {
       btn.disabled = false; btn.textContent = 'Cancel this class →';
-      setStatus('error', `Network error: ${err.message}`);
+      setStatus('error', `Network error: ${err.message}${helpBtn('Network error', `msg=${encodeURIComponent(err.message)}`)}`);
     }
   }
 
@@ -290,6 +300,15 @@
 
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function helpBtn(errorType, details) {
+    const body = encodeURIComponent(
+      `**Error:** ${errorType}\n**Studio:** ${studio}\n**Date/Time:** ${dt}\n**Details:** ${decodeURIComponent(details)}\n\n_Sent from cancel page_`
+    );
+    const title = encodeURIComponent(`[cancel] ${errorType} — ${studio} ${dt}`);
+    const url = `https://github.com/${repo}/issues/new?title=${title}&body=${body}&labels=bug`;
+    return ` <a class="help-btn" href="${url}" target="_blank">🆘 Get help</a>`;
   }
 
   init();

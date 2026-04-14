@@ -63,29 +63,52 @@ def main() -> None:
     log.info("Booking %d class(es)", len(parsed))
 
     from src.wellhub_api import book_class
+    import time
 
     results: dict[str, dict] = {}
     failure_reasons: list[str] = []
 
     for slot_id, class_id_gql, partner_id in parsed:
         log.info("Booking slot %s ...", slot_id)
-        try:
-            ok = book_class(
-                class_id=slot_id,
-                class_id_gql=class_id_gql,
-                partner_id=partner_id,
-            )
-            results[slot_id] = {"success": ok, "reason": None}
-            log.info("  %s → %s", slot_id, "✓ booked" if ok else "✗ FAILED")
-            if not ok:
-                failure_reasons.append(f"{slot_id}: unexpected failure (no restriction returned)")
-        except RuntimeError as re:
-            key = getattr(re, "restriction_key", str(re))
-            msg = getattr(re, "restriction_msg", "")
-            results[slot_id] = {"success": False, "reason": key, "msg": msg}
-            human = key.split(".")[-2] if "." in key else key  # e.g. "usage_exceeds_plan"
-            log.error("  %s → ✗ RESTRICTED: %s (%s)", slot_id, human, msg)
-            failure_reasons.append(f"{slot_id}: {human} — {msg}")
+        MAX_ATTEMPTS = 3
+        RETRY_DELAY  = 12   # seconds — give Wellhub time to release slot after cancel
+        last_exc = None
+        booked = False
+
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            try:
+                ok = book_class(
+                    class_id=slot_id,
+                    class_id_gql=class_id_gql,
+                    partner_id=partner_id,
+                )
+                results[slot_id] = {"success": ok, "reason": None}
+                log.info("  %s → %s (attempt %d)", slot_id, "✓ booked" if ok else "✗ FAILED", attempt)
+                if not ok:
+                    failure_reasons.append(f"{slot_id}: unexpected failure (no restriction returned)")
+                booked = True
+                break
+            except RuntimeError as re:
+                key = getattr(re, "restriction_key", str(re))
+                msg = getattr(re, "restriction_msg", "")
+                # Retry on transient Wellhub 500 (race condition after cancel)
+                if key == "graphql_error" and attempt < MAX_ATTEMPTS:
+                    log.warning("  %s → Wellhub 500 (attempt %d/%d) — retrying in %ds...",
+                                slot_id, attempt, MAX_ATTEMPTS, RETRY_DELAY)
+                    time.sleep(RETRY_DELAY)
+                    continue
+                # Non-retryable (restriction, plan limit, etc.)
+                results[slot_id] = {"success": False, "reason": key, "msg": msg}
+                human = key.split(".")[-2] if "." in key else key
+                log.error("  %s → ✗ RESTRICTED: %s (%s)", slot_id, human, msg)
+                failure_reasons.append(f"{slot_id}: {human} — {msg}")
+                booked = True  # break outer loop
+                break
+
+        if not booked:
+            # All retries exhausted on 500
+            results[slot_id] = {"success": False, "reason": "graphql_error", "msg": "Wellhub 500 after retries"}
+            failure_reasons.append(f"{slot_id}: Wellhub 500 after {MAX_ATTEMPTS} attempts")
 
     booked = [cid for cid, r in results.items() if r["success"]]
     failed = [cid for cid, r in results.items() if not r["success"]]

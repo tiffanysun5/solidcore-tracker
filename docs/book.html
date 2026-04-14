@@ -45,6 +45,12 @@
   .token-note { font-size: 11px; color: #aaa; margin-top: 8px; }
   .change-token { font-size: 12px; color: #aaa; background: none; border: none;
                   cursor: pointer; text-decoration: underline; margin-top: 12px; }
+  .help-btn {
+    display: inline-block; margin-top: 10px; font-size: 12px;
+    color: #6b7280; background: none; border: 1px solid #d1d5db;
+    border-radius: 6px; padding: 6px 12px; cursor: pointer; text-decoration: none;
+  }
+  .help-btn:hover { background: #f9fafb; }
 
   /* Status */
   #status { margin-top: 16px; padding: 12px; border-radius: 6px;
@@ -208,13 +214,13 @@
         setStatus('success', `✅ <strong>Confirmed booked!</strong><br>${studio} · ${dt} · ${instructor}`);
       } else if (conclusion === 'failure') {
         btn.disabled = false; btn.textContent = 'Try again →';
-        setStatus('error', `❌ Booking failed — the class may be full or already booked. <a href="https://github.com/${ghRepo}/actions/workflows/book.yml" target="_blank">See logs</a>.`);
+        setStatus('error', `❌ Booking failed — the class may be full or already booked. <a href="https://github.com/${ghRepo}/actions/workflows/book.yml" target="_blank">See logs</a>.${helpBtn('Book failed', runId)}`);
       } else {
         setStatus('loading', `Run ${conclusion || 'timed out'}. Check <a href="https://github.com/${ghRepo}/actions/workflows/book.yml" target="_blank">GitHub Actions</a>.`);
       }
     } catch (err) {
       btn.disabled = false; btn.textContent = 'Book this class →';
-      setStatus('error', `Network error: ${err.message}`);
+      setStatus('error', `Network error: ${err.message}${helpBtn('Network error', err.message)}`);
     }
   }
 
@@ -268,6 +274,15 @@
     return String(s)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function helpBtn(errorType, detail) {
+    const body = encodeURIComponent(
+      `**Error:** ${errorType}\n**Studio:** ${studio}\n**Date/Time:** ${dt}\n**Instructor:** ${instructor}\n**Detail:** ${detail}\n\n_Sent from book page_`
+    );
+    const title = encodeURIComponent(`[book] ${errorType} — ${studio} ${dt}`);
+    const url = `https://github.com/${ghRepo}/issues/new?title=${title}&body=${body}&labels=bug`;
+    return ` <a class="help-btn" href="${url}" target="_blank">🆘 Get help</a>`;
   }
 
   init();
