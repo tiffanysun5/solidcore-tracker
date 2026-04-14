@@ -38,13 +38,19 @@ def main() -> None:
     parser.add_argument("--no-email", action="store_true",
                         help="Skip sending email (print digest to stdout)")
     parser.add_argument("--force-email", action="store_true",
-                        help="Alias for normal send (kept for compat)")
+                        help="Send email even if already sent today (bypass dedup)")
     args = parser.parse_args()
 
     tokens_file = Path(__file__).parent / "tokens.json"
     if not os.environ.get("WELLHUB_REFRESH_TOKEN") and not tokens_file.exists():
         log.error("WELLHUB_REFRESH_TOKEN env var not set and tokens.json not found.")
         sys.exit(1)
+
+    # ── 0. Dedup guard — skip if already sent today (unless forced) ───────
+    from src.state import already_sent_today, mark_sent_today, save_booking_ids
+    if not args.force_email and not args.no_email and already_sent_today():
+        log.info("Email already sent today — skipping. Use --force-email to override.")
+        return
 
     # ── 1. Muscle focus (public) ──────────────────────────────────────────
     log.info("Step 1: Fetching muscle focus calendar")
@@ -124,6 +130,10 @@ def main() -> None:
                     extra_slots=extra_slots, focus_map=focus_map, slot_by_id=slot_by_id,
                     all_slots=slots, new_day_all=new_day_all,
                     travel_city=travel_city, travel_slots=travel_slots)
+        # Save state for change detection
+        booking_ids = {b.attendance_id for b in upcoming_bookings if b.attendance_id}
+        save_booking_ids(booking_ids)
+        mark_sent_today()
 
     log.info("Done.")
 

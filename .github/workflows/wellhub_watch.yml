@@ -1,0 +1,40 @@
+name: Wellhub change watcher
+
+on:
+  schedule:
+    # Run every hour between 8am–10pm ET (12:00–02:00 UTC next day)
+    - cron: "0 12-23,0-2 * * *"
+  workflow_dispatch:
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore state cache
+        uses: actions/cache@v4
+        with:
+          path: state/
+          key: tracker-state-${{ github.run_id }}
+          restore-keys: |
+            tracker-state-
+
+      - name: Check for Wellhub changes
+        env:
+          WELLHUB_REFRESH_TOKEN:  ${{ secrets.WELLHUB_REFRESH_TOKEN }}
+          SMTP_USER:              ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD:          ${{ secrets.SMTP_PASSWORD }}
+          APP_REPO:               ${{ secrets.APP_REPO }}
+          GOOGLE_CALENDAR_ICS_URL: ${{ secrets.GOOGLE_CALENDAR_ICS_URL }}
+        run: python check_wellhub.py

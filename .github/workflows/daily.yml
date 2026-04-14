@@ -2,8 +2,11 @@ name: Daily class tracker
 
 on:
   schedule:
-    # 6:00 AM ET = 10:00 UTC (EDT) / 11:00 UTC (EST)
+    # 6 AM ET = 10:00 UTC (EDT). GitHub scheduler is unreliable so retry at
+    # 11:00 and 12:00 UTC too — main.py's dedup guard ensures only one email/day.
     - cron: "0 10 * * *"
+    - cron: "0 11 * * *"
+    - cron: "0 12 * * *"
   workflow_dispatch:
     inputs:
       force_email:
@@ -37,8 +40,9 @@ jobs:
 
       - name: Run tracker
         env:
-          SMTP_USER:              ${{ secrets.SMTP_USER }}
-          SMTP_PASSWORD:          ${{ secrets.SMTP_PASSWORD }}
-          APP_REPO:               ${{ secrets.APP_REPO }}
-          WELLHUB_REFRESH_TOKEN:  ${{ secrets.WELLHUB_REFRESH_TOKEN }}
+          SMTP_USER:               ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD:           ${{ secrets.SMTP_PASSWORD }}
+          APP_REPO:                ${{ secrets.APP_REPO }}
+          WELLHUB_REFRESH_TOKEN:   ${{ secrets.WELLHUB_REFRESH_TOKEN }}
+          GOOGLE_CALENDAR_ICS_URL: ${{ secrets.GOOGLE_CALENDAR_ICS_URL }}
         run: python main.py
