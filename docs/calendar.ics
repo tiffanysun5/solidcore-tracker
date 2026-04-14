@@ -6,24 +6,6 @@ METHOD:PUBLISH
 X-WR-CALNAME:Solidcore Classes
 X-WR-TIMEZONE:America/New_York
 BEGIN:VEVENT
-UID:77f59d4b-f6a9-4760-9d60-0d171657c9c5@solidcore-tracker
-DTSTART;TZID=America/New_York:20260413T130500
-DTEND;TZID=America/New_York:20260413T135500
-SUMMARY:[solidcore] Off-Peak Signature50: Full Body
-LOCATION:155 W 23rd St, New York, NY 10011
-DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
-STATUS:CONFIRMED
-END:VEVENT
-BEGIN:VEVENT
-UID:280fa05f-e202-4959-ae3d-da216e5402b9@solidcore-tracker
-DTSTART;TZID=America/New_York:20260414T120500
-DTEND;TZID=America/New_York:20260414T125500
-SUMMARY:[solidcore] Focus50: Core + Lower + Upper Body
-LOCATION:155 W 23rd St, New York, NY 10011
-DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
-STATUS:CONFIRMED
-END:VEVENT
-BEGIN:VEVENT
 UID:d2cc23e9-43bb-4409-b02a-9cf886e94fb1@solidcore-tracker
 DTSTART;TZID=America/New_York:20260415T113000
 DTEND;TZID=America/New_York:20260415T122000
@@ -96,9 +78,27 @@ DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
-UID:3dbd38d2-3425-469e-9d5e-4f775f0803e6@solidcore-tracker
-DTSTART;TZID=America/New_York:20260409T101500
-DTEND;TZID=America/New_York:20260409T110500
+UID:c758dbaf-b62a-4223-8125-138048267a60@solidcore-tracker
+DTSTART;TZID=America/New_York:20260428T110500
+DTEND;TZID=America/New_York:20260428T115500
+SUMMARY:[solidcore] Off-Peak Signature50: Full Body
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:3f11e10c-2838-49f4-80b6-f0cd713eee0d@solidcore-tracker
+DTSTART;TZID=America/New_York:20260414T110500
+DTEND;TZID=America/New_York:20260414T115500
+SUMMARY:[solidcore] Classes
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:77f59d4b-f6a9-4760-9d60-0d171657c9c5@solidcore-tracker
+DTSTART;TZID=America/New_York:20260413T130500
+DTEND;TZID=America/New_York:20260413T135500
 SUMMARY:[solidcore] Classes
 LOCATION:155 W 23rd St, New York, NY 10011
 DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
