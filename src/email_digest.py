@@ -189,7 +189,8 @@ def _build_email(
                 if "chelsea" in n: return "chelsea"
                 if "greenwich" in n: return "greenwich"
                 return n.split()[0] if n.split() else n
-            muscles = focus_map.get(b.dt.date(), [])
+            is_solidcore = "[solidcore]" in b.studio_name.lower()
+            muscles = focus_map.get(b.dt.date(), []) if is_solidcore else []
             slot    = slot_by_id.get((b.dt.date(), b.dt.hour, b.dt.minute, _sk(b.studio_name)))
             muscle_line = (f'<span style="color:#059669;font-size:11px;font-weight:600">'
                            f'{" · ".join(muscles)}</span>' if muscles else '')
