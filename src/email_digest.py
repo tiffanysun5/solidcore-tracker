@@ -203,10 +203,34 @@ def _build_email(
                           f'({sp} spot{"s" if sp != 1 else ""})</span>')
             sep = '<br>' if muscle_line else ''
             focus_cell = muscle_line + sep + spots_line
+
+            # Cancel deadline warning
+            from src.config import CANCEL_WINDOWS
+            from datetime import timedelta as _td
+            sn_lower = b.studio_name.lower()
+            cancel_hours = None
+            for keyword, hours in CANCEL_WINDOWS.items():
+                if keyword in sn_lower:
+                    cancel_hours = hours
+                    break
+            cancel_warn = ""
+            if cancel_hours:
+                deadline = b.dt - _td(hours=cancel_hours)
+                now_ny = datetime.now(tz=ZoneInfo("America/New_York"))
+                if now_ny < deadline:
+                    # Deadline is still in the future — show it
+                    dl_str = deadline.strftime("%-I:%M %p") if deadline.date() == b.dt.date() else deadline.strftime("%a %-I:%M %p")
+                    cancel_warn = (f'<br><span style="font-size:10px;color:#d97706;font-weight:600">'
+                                   f'⚠️ Cancel by {dl_str}</span>')
+                else:
+                    # Past deadline
+                    cancel_warn = (f'<br><span style="font-size:10px;color:#dc2626;font-weight:600">'
+                                   f'🚫 Late cancel window closed</span>')
+
             rows += (
                 f'<tr><td style="white-space:nowrap;color:#374151;font-weight:500">{b.dt.strftime("%a %b %-d")}</td>'
                 f'<td style="white-space:nowrap;color:#6b7280">{b.dt.strftime("%-I:%M %p")}</td>'
-                f'<td style="color:#2563eb;font-weight:500;white-space:nowrap">{studio}</td>'
+                f'<td style="color:#2563eb;font-weight:500;white-space:nowrap">{studio}{cancel_warn}</td>'
                 f'<td style="color:#111;width:50%;padding-left:24px">{title}{cancel_btn}</td>'
                 f'<td style="line-height:1.6;padding-left:32px;white-space:nowrap">{focus_cell}</td></tr>'
             )

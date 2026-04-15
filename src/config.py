@@ -29,6 +29,14 @@ BACKUP_END_HOUR   = 19  # exclusive (7pm cutoff)
 BOOKING_WINDOW_DAYS = 14
 WEEKLY_CLASS_LIMIT  = 4   # max solidcore (premium) classes per week
 
+# Cancellation penalty windows (hours before class — cancel after this = late cancel / lost check-in)
+# Used to show a warning badge in the booked section of the email.
+CANCEL_WINDOWS: dict[str, int] = {
+    "solidcore": 12,   # Solidcore: 12h free cancel window
+    "nofar":     24,   # Nofar Method: 24h free cancel window
+    "corepower": 24,   # CorePower: 24h free cancel window
+}
+
 # Extra studios shown as backup at bottom of email — standard (1/day) classes, not counted in quota.
 EXTRA_STUDIOS = {
     "Nofar Method - Flatiron": {
