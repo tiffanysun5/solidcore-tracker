@@ -6,12 +6,12 @@ METHOD:PUBLISH
 X-WR-CALNAME:Solidcore Classes
 X-WR-TIMEZONE:America/New_York
 BEGIN:VEVENT
-UID:d2cc23e9-43bb-4409-b02a-9cf886e94fb1@solidcore-tracker
-DTSTART;TZID=America/New_York:20260415T113000
-DTEND;TZID=America/New_York:20260415T122000
-SUMMARY:[solidcore] Nofar Method Flatiron Pilates Class
-LOCATION:Nofar Method - Flatiron
-DESCRIPTION:Studio: Nofar Method - Flatiron\nBooked via Wellhub
+UID:17650a88-4a84-4ecf-91f6-b798dc101fa1@solidcore-tracker
+DTSTART;TZID=America/New_York:20260416T141500
+DTEND;TZID=America/New_York:20260416T150500
+SUMMARY:[solidcore] Off-Peak Signature50: Full Body
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -21,15 +21,6 @@ DTEND;TZID=America/New_York:20260417T115500
 SUMMARY:[solidcore] Signature50: Full Body
 LOCATION:155 W 23rd St, New York, NY 10011
 DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
-STATUS:CONFIRMED
-END:VEVENT
-BEGIN:VEVENT
-UID:25efefa4-d395-441b-8d43-00f0e83886e9@solidcore-tracker
-DTSTART;TZID=America/New_York:20260419T153000
-DTEND;TZID=America/New_York:20260419T162000
-SUMMARY:[solidcore] Signature50: Full Body
-LOCATION:[solidcore] Chicago - Streeterville
-DESCRIPTION:Studio: Chicago - Streeterville\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -78,10 +69,19 @@ DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
-UID:c758dbaf-b62a-4223-8125-138048267a60@solidcore-tracker
-DTSTART;TZID=America/New_York:20260428T110500
-DTEND;TZID=America/New_York:20260428T115500
-SUMMARY:[solidcore] Off-Peak Signature50: Full Body
+UID:c1493a3d-4178-4edf-97bf-7d3f0b453090@solidcore-tracker
+DTSTART;TZID=America/New_York:20260428T201500
+DTEND;TZID=America/New_York:20260428T210500
+SUMMARY:[solidcore] Signature50: Full Body
+LOCATION:[solidcore] Greenwich Village
+DESCRIPTION:Studio: Greenwich Village\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:c16b8c2b-96cb-4cd9-b068-9b2de86ace7b@solidcore-tracker
+DTSTART;TZID=America/New_York:20260429T163000
+DTEND;TZID=America/New_York:20260429T172000
+SUMMARY:[solidcore] Signature50: Full Body
 LOCATION:155 W 23rd St, New York, NY 10011
 DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
