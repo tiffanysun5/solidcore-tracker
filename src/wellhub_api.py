@@ -156,6 +156,7 @@ class ClassSlot:
     class_id_gql: str = ""       # classId from partnerClassSchedule (needed for bookingAttendance)
     partner_id: str = ""         # partnerId (per-studio constant)
     available_spots: int = 0
+    class_name: str = ""         # raw name from API e.g. "Studio 1 | Signature50: Full Body"
 
     @property
     def date(self) -> date:
@@ -294,6 +295,7 @@ def get_schedule(email: str = "", password: str = "", headless: bool = True) -> 
                         class_id_gql=str(item.get("classId", "")),
                         partner_id=studio_cfg["partner_id"],
                         available_spots=item.get("availableSpots", 0),
+                        class_name=item.get("name", ""),
                     ))
 
             except Exception as exc:

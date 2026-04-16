@@ -170,12 +170,22 @@ def main() -> None:
         end_dt = s.dt + timedelta(minutes=class_duration_min)
         return (end_dt.hour, end_dt.minute) <= (done_by_hour, done_by_min)
 
-    # Filter to the watch window: after noon, finishing by 5pm
+    # Class types to exclude (case-insensitive substring match on class_name)
+    EXCLUDE_TYPES = ["power30", "intro", "starter50"]
+
+    def is_excluded(s) -> bool:
+        name_lower = s.class_name.lower()
+        return any(ex in name_lower for ex in EXCLUDE_TYPES)
+
+    # Filter to the watch window: after noon, finishing by 5pm, not Power30/Intro
     target = [
         s for s in slots
-        if s.date == watch_date and s.dt.hour >= after_hour and finishes_by(s)
+        if s.date == watch_date
+        and s.dt.hour >= after_hour
+        and finishes_by(s)
+        and not is_excluded(s)
     ]
-    log.info("Found %d slots on %s between %d:00 and done by %d:%02d",
+    log.info("Found %d eligible slots on %s between %d:00 and done by %d:%02d (excluded Power30/Intro)",
              len(target), watch_date, after_hour, done_by_hour, done_by_min)
 
     # Build current spot map  {slot_key: available_spots}
