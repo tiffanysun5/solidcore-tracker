@@ -34,7 +34,7 @@ WEEKLY_CLASS_LIMIT  = 4   # max solidcore (premium) classes per week
 CANCEL_WINDOWS: dict[str, int] = {
     "solidcore": 12,   # Solidcore: 12h free cancel window
     "nofar":     24,   # Nofar Method: 24h free cancel window
-    "corepower": 24,   # CorePower: 24h free cancel window
+    "corepower": 2,    # CorePower: 2h free cancel window
 }
 
 # Extra studios shown as backup at bottom of email — standard (1/day) classes, not counted in quota.
@@ -49,7 +49,13 @@ EXTRA_STUDIOS = {
 
 # Monthly once-per-month studios — reminder shown in email if not yet visited this month.
 # Matched against studio name in Wellhub check-in history (case-insensitive substring).
-MONTHLY_STUDIOS = ["othership", "stretch"]
+MONTHLY_STUDIOS = ["othership", "stretch", "nofar"]
+
+# Per-studio monthly class limits.  Tracked in the email's monthly section.
+# late cancels count (they consume a Wellhub check-in just like attendance).
+MONTHLY_LIMITS: dict[str, int] = {
+    "nofar": 6,
+}
 
 NOTIFY_EMAIL = "tiffanysun27@gmail.com"
 

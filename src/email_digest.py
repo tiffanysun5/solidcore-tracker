@@ -222,8 +222,8 @@ def _build_email(
                     dl_str = deadline.strftime("%-I:%M %p") if deadline.date() == b.dt.date() else deadline.strftime("%a %-I:%M %p")
                     cancel_warn = (f'<br><span style="font-size:10px;color:#d97706;font-weight:600">'
                                    f'⚠️ Cancel by {dl_str}</span>')
-                else:
-                    # Past deadline
+                elif cancel_hours > 2:
+                    # Past deadline — only badge for meaningful windows (≥ 4h); skip CorePower's 2h
                     cancel_warn = (f'<br><span style="font-size:10px;color:#dc2626;font-weight:600">'
                                    f'🚫 Late cancel window closed</span>')
 
@@ -374,20 +374,44 @@ def _book_btn(m: MatchedClass) -> str:
 
 def _monthly_reminder_section(all_bookings: list, month_start, today, monthly_studios: list) -> str:
     """Show a reminder pill for each monthly studio if not yet visited this month."""
-    labels = {"othership": "Othership", "stretch": "Stretch*d"}
+    from src.config import MONTHLY_LIMITS
+    labels = {"othership": "Othership", "stretch": "Stretch*d", "nofar": "Nofar"}
     items = []
     for keyword in monthly_studios:
-        done = any(
-            keyword in b.studio_name.lower() and month_start <= b.dt.date() <= today
-            for b in all_bookings if b.completed
-        )
         label = labels.get(keyword, keyword.title())
-        if done:
-            badge = (f'<span style="background:#d1fae5;color:#065f46;font-size:11px;font-weight:700;'
-                     f'padding:3px 10px;border-radius:20px">✓ {label} done</span>')
+        monthly_limit = MONTHLY_LIMITS.get(keyword)
+        month_visits = [
+            b for b in all_bookings
+            if b.completed and keyword in b.studio_name.lower()
+            and month_start <= b.dt.date() <= today
+        ]
+
+        if monthly_limit is not None:
+            # Show X/N counter (late cancels already count since Wellhub charges the check-in)
+            count = len(month_visits)
+            if count >= monthly_limit:
+                bg, fg = "#fee2e2", "#991b1b"
+                text = f"🚫 {label} — {count}/{monthly_limit} limit reached"
+            elif count >= monthly_limit - 1:
+                bg, fg = "#fef3c7", "#92400e"
+                text = f"⚠️ {label} — {count}/{monthly_limit} this month"
+            elif count > 0:
+                bg, fg = "#d1fae5", "#065f46"
+                text = f"✓ {label} — {count}/{monthly_limit} this month"
+            else:
+                bg, fg = "#fef3c7", "#92400e"
+                text = f"⏰ {label} — 0/{monthly_limit} this month"
+            badge = (f'<span style="background:{bg};color:{fg};font-size:11px;font-weight:700;'
+                     f'padding:3px 10px;border-radius:20px">{text}</span>')
         else:
-            badge = (f'<span style="background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;'
-                     f'padding:3px 10px;border-radius:20px">⏰ {label} — not yet this month</span>')
+            # Binary done/not-done for studios without a monthly limit
+            done = bool(month_visits)
+            if done:
+                badge = (f'<span style="background:#d1fae5;color:#065f46;font-size:11px;font-weight:700;'
+                         f'padding:3px 10px;border-radius:20px">✓ {label} done</span>')
+            else:
+                badge = (f'<span style="background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;'
+                         f'padding:3px 10px;border-radius:20px">⏰ {label} — not yet this month</span>')
         items.append(badge)
 
     if not items:

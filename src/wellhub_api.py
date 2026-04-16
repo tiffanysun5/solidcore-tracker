@@ -604,19 +604,40 @@ def get_upcoming_bookings() -> list[WellhubBooking]:
     now = datetime.now(tz=ny)
     abbr_map = {m.upper(): i for i, m in enumerate(cal_mod.month_abbr) if m}
 
+    # Two calls in one batch:
+    #   [0] PROFILE_VARS  → upcoming reserved + CheckInBookingHistory (recent 4 items, Solidcore quota)
+    #   [1] RECENT_VARS   → RecentActivities with 31-day window (full monthly history for all studios)
+    RECENT_VARS = {
+        "settings": {"stats": False, "streaks": False, "schedule": False, "badges": False,
+                     "challenge_list": False, "wellhub_ai_entrypoint": False,
+                     "activated_apps": False, "favorites": False, "recent": True,
+                     "checkin_booking_history": False},
+        "variables": {"enable_recents": True, "minutes_to_rate": 125, "days_to_expiration": 31,
+                      "recents": {"enable": True, "minutes_to_rate": 125,
+                                  "days_to_expiration": 31, "days_to_renew": 90},
+                      "stimulus": {"enable": True, "minutes_to_rate": 125,
+                                   "days_to_expiration": 31, "days_to_renew": 90}},
+        "isFamilyMember": True,
+        "includeCheckInBookingHistory": False,
+        "maxChallengesSize": 0,
+        "challengesSettings": {},
+        "badgesSettings": {"enableBadgesCarousel": False, "maxBadgesSize": 0},
+    }
+
     try:
-        results = _gql([{
-            "operationName": "profilePerformance",
-            "variables": PROFILE_VARS,
-            "query": PROFILE_SCHEDULE_QUERY,
-        }])
-        sections = (results[0].get("data", {})
-                    .get("profilePerformance", {})
-                    .get("sections", []))
+        results = _gql([
+            {"operationName": "profilePerformance", "variables": PROFILE_VARS,   "query": PROFILE_SCHEDULE_QUERY},
+            {"operationName": "profilePerformance", "variables": RECENT_VARS,    "query": PROFILE_SCHEDULE_QUERY},
+        ])
 
         bookings: list[WellhubBooking] = []
 
-        for section in sections:
+        # ── Result [0]: upcoming reserved + CheckInBookingHistory ─────────
+        sections0 = (results[0].get("data", {})
+                     .get("profilePerformance", {})
+                     .get("sections", []))
+
+        for section in sections0:
             typename = section.get("__typename", "")
 
             # ── Upcoming reserved classes ──────────────────────────────────
@@ -658,67 +679,132 @@ def get_upcoming_bookings() -> list[WellhubBooking]:
                         completed=False,
                     ))
 
-            # ── Completed check-in history (quota + monthly reminders) ──────
-            elif typename == "CheckInBookingHistoryProfilePerformance":
-                from src.config import MONTHLY_STUDIOS
-                tracked_names = {"[solidcore]"} | {s.lower() for s in MONTHLY_STUDIOS}
-                items = (section.get("sectionData", {}) or {}).get("items", []) or []
-                for item in items:
-                    partner_node = (item.get("partner") or {}).get("name") or {}
-                    partner_name = _label_value(partner_node)
-                    pname_lower  = partner_name.lower()
-                    if not any(t in pname_lower for t in tracked_names):
-                        continue  # skip unrelated gyms
+        import re as _re
+        from src.config import MONTHLY_STUDIOS
+        tracked_names = {"[solidcore]"} | {s.lower() for s in MONTHLY_STUDIOS}
 
-                    # Date text: "Apr 3 • 11:05 AM"
-                    date_node = (item.get("date") or {}).get("text") or {}
-                    date_text = _label_value(date_node)  # e.g. "Apr 3 • 11:05 AM"
-                    if not date_text or "•" not in date_text:
-                        continue
+        completed_bookings: list[WellhubBooking] = []
 
-                    date_part, _, time_part = date_text.partition("•")
-                    date_part = date_part.strip()   # "Apr 3"
-                    time_part = time_part.strip()   # "11:05 AM"
+        # ── Result [0]: CheckInBookingHistory — freshest ~4 items ────────
+        for section in sections0:
+            if section.get("__typename") != "CheckInBookingHistoryProfilePerformance":
+                continue
+            items = (section.get("sectionData", {}) or {}).get("items", []) or []
+            for item in items:
+                partner_node = (item.get("partner") or {}).get("name") or {}
+                partner_name = _label_value(partner_node)
+                pname_lower  = partner_name.lower()
+                if not any(t in pname_lower for t in tracked_names):
+                    continue
 
-                    # Parse "Apr 3"
-                    import re
-                    dm = re.match(r'([A-Za-z]+)\s+(\d+)', date_part)
-                    if not dm:
-                        continue
-                    month_num = abbr_map.get(dm.group(1)[:3].upper(), 0)
-                    day       = int(dm.group(2))
-                    if not month_num or not day:
-                        continue
+                date_node = (item.get("date") or {}).get("text") or {}
+                date_text = _label_value(date_node)
+                if not date_text or "•" not in date_text:
+                    continue
 
-                    parsed = _parse_time_str(time_part)
-                    if not parsed:
-                        continue
-                    h, mi = parsed
+                date_part, _, time_part = date_text.partition("•")
+                date_part = date_part.strip()
+                time_part = time_part.strip()
 
-                    # Infer year: assume recent past (within last 6 months)
-                    try:
-                        candidate = datetime(now.year, month_num, day, h, mi, tzinfo=ny)
-                        if candidate > now:
-                            candidate = datetime(now.year - 1, month_num, day, h, mi, tzinfo=ny)
-                    except Exception:
-                        continue
+                dm = _re.match(r'([A-Za-z]+)\s+(\d+)', date_part)
+                if not dm:
+                    continue
+                month_num = abbr_map.get(dm.group(1)[:3].upper(), 0)
+                day       = int(dm.group(2))
+                if not month_num or not day:
+                    continue
 
-                    uid        = str(item.get("id", ""))
-                    # product.name has the class name; attendance is a list so skip it
-                    product_node = (item.get("product") or {}).get("name") or {}
-                    class_name   = _label_value(product_node) or partner_name
+                parsed = _parse_time_str(time_part)
+                if not parsed:
+                    continue
+                h, mi = parsed
 
-                    bookings.append(WellhubBooking(
-                        attendance_id=uid,
-                        class_name=class_name,
-                        studio_name=partner_name,
-                        dt=candidate,
-                        completed=True,
-                    ))
+                try:
+                    candidate = datetime(now.year, month_num, day, h, mi, tzinfo=ny)
+                    if candidate > now:
+                        candidate = datetime(now.year - 1, month_num, day, h, mi, tzinfo=ny)
+                except Exception:
+                    continue
 
+                uid        = str(item.get("id", ""))
+                product_node = (item.get("product") or {}).get("name") or {}
+                class_name   = _label_value(product_node) or partner_name
+
+                completed_bookings.append(WellhubBooking(
+                    attendance_id=uid,
+                    class_name=class_name,
+                    studio_name=partner_name,
+                    dt=candidate,
+                    completed=True,
+                ))
+
+        # ── Result [1]: RecentActivities — full 31-day history ────────────
+        sections1 = (results[1].get("data", {})
+                     .get("profilePerformance", {})
+                     .get("sections", []))
+        for section in sections1:
+            if section.get("__typename") != "RecentActivitiesProfilePerformance":
+                continue
+            items = (section.get("sectionData", {}) or {}).get("recentItems", []) or []
+            for item in items:
+                # RecentActivities: title = studio name, subtitle = class type
+                partner_name = item.get("title", "") or ""
+                pname_lower  = partner_name.lower()
+                if not any(t in pname_lower for t in tracked_names):
+                    continue
+
+                date_text = item.get("datetime", "") or ""
+                if not date_text or "•" not in date_text:
+                    continue
+
+                date_part, _, time_part = date_text.partition("•")
+                date_part = date_part.strip()
+                time_part = time_part.strip()
+
+                dm = _re.match(r'([A-Za-z]+)\s+(\d+)', date_part)
+                if not dm:
+                    continue
+                month_num = abbr_map.get(dm.group(1)[:3].upper(), 0)
+                day       = int(dm.group(2))
+                if not month_num or not day:
+                    continue
+
+                parsed = _parse_time_str(time_part)
+                if not parsed:
+                    continue
+                h, mi = parsed
+
+                try:
+                    candidate = datetime(now.year, month_num, day, h, mi, tzinfo=ny)
+                    if candidate > now:
+                        candidate = datetime(now.year - 1, month_num, day, h, mi, tzinfo=ny)
+                except Exception:
+                    continue
+
+                uid        = str(item.get("id", ""))
+                class_name = item.get("subtitle", "") or partner_name
+
+                completed_bookings.append(WellhubBooking(
+                    attendance_id=uid,
+                    class_name=class_name,
+                    studio_name=partner_name,
+                    dt=candidate,
+                    completed=True,
+                ))
+
+        # Deduplicate completed: keep one entry per (date, hour, minute, studio-key)
+        seen: set[tuple] = set()
+        deduped: list[WellhubBooking] = []
+        for b in completed_bookings:
+            key = (b.dt.date(), b.dt.hour, b.dt.minute, b.studio_name.lower().split()[0])
+            if key not in seen:
+                seen.add(key)
+                deduped.append(b)
+
+        bookings.extend(deduped)
         upcoming  = [b for b in bookings if not b.completed]
         completed = [b for b in bookings if b.completed]
-        log.info("Found %d upcoming bookings + %d recent Solidcore check-ins",
+        log.info("Found %d upcoming bookings + %d recent check-ins",
                  len(upcoming), len(completed))
         return bookings
 
