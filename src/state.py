@@ -51,3 +51,25 @@ def mark_sent_today() -> None:
     STATE_DIR.mkdir(exist_ok=True)
     (STATE_DIR / "last_sent_date.txt").write_text(date.today().isoformat())
     log.info("Marked email as sent today (%s)", date.today().isoformat())
+
+
+# ── Spot-watch state ──────────────────────────────────────────────────────────
+
+def load_spot_state() -> dict[str, int]:
+    """Return saved {slot_key: available_spots} from the last run."""
+    f = STATE_DIR / "spot_watch_state.json"
+    if f.exists():
+        try:
+            return json.loads(f.read_text()).get("spots", {})
+        except Exception as exc:
+            log.warning("Could not read spot_watch_state.json: %s", exc)
+    return {}
+
+
+def save_spot_state(spots: dict[str, int]) -> None:
+    """Persist current {slot_key: available_spots}."""
+    STATE_DIR.mkdir(exist_ok=True)
+    (STATE_DIR / "spot_watch_state.json").write_text(
+        json.dumps({"spots": spots, "updated": date.today().isoformat()}, indent=2)
+    )
+    log.info("Spot state saved: %d slots tracked", len(spots))
