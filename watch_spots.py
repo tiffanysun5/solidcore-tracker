@@ -126,34 +126,34 @@ def main() -> None:
         log.error("WELLHUB_REFRESH_TOKEN not set")
         return
 
-    ny   = ZoneInfo("America/New_York")
-    now  = datetime.now(tz=ny)
+    ny    = ZoneInfo("America/New_York")
+    now   = datetime.now(tz=ny)
     today = now.date()
 
-    # Watch date: default tomorrow; override via WATCH_DATE=YYYY-MM-DD
+    after_hour       = int(os.getenv("WATCH_AFTER_HOUR",    "12"))  # noon
+    done_by_hour     = int(os.getenv("WATCH_DONE_BY_HOUR",  "17"))  # 5pm
+    done_by_min      = int(os.getenv("WATCH_DONE_BY_MIN",   "0"))
+    class_duration_min = 50
+
+    # Always watch today (slots still in the future) + tomorrow.
+    # If WATCH_DATE is set, watch that specific date only.
     watch_date_str = os.getenv("WATCH_DATE", "")
     if watch_date_str:
         try:
-            watch_date = date.fromisoformat(watch_date_str)
+            watch_dates = [date.fromisoformat(watch_date_str)]
         except ValueError:
-            watch_date = today + timedelta(days=1)
+            watch_dates = [today, today + timedelta(days=1)]
     else:
-        watch_date = today + timedelta(days=1)
+        watch_dates = [today, today + timedelta(days=1)]
 
-    # Only watch until end of watch_date (stop alerting after it's passed)
-    if watch_date < today:
-        log.info("Watch date %s has passed — nothing to do.", watch_date)
+    # Drop dates that are fully in the past
+    watch_dates = [d for d in watch_dates if d >= today]
+    if not watch_dates:
+        log.info("All watch dates have passed — nothing to do.")
         return
 
-    after_hour  = int(os.getenv("WATCH_AFTER_HOUR", "12"))  # 12 = noon
-    # Latest class that finishes by WATCH_DONE_BY (default 17:00 = 5pm).
-    # Classes are 50 min, so latest start = done_by - 50 min.
-    done_by_hour = int(os.getenv("WATCH_DONE_BY_HOUR", "17"))
-    done_by_min  = int(os.getenv("WATCH_DONE_BY_MIN",  "0"))
-    class_duration_min = 50
-
-    log.info("Watching %s %d:00–latest start before %d:%02d for open spots...",
-             watch_date, after_hour, done_by_hour, done_by_min)
+    log.info("Watching %s | after %d:00, done by %d:%02d, excl Power30/Intro",
+             watch_dates, after_hour, done_by_hour, done_by_min)
 
     from src.wellhub_api import get_schedule
     from src.state import load_spot_state, save_spot_state
@@ -166,36 +166,37 @@ def main() -> None:
         return
 
     def finishes_by(s) -> bool:
-        """True if class ends by done_by_hour:done_by_min."""
         end_dt = s.dt + timedelta(minutes=class_duration_min)
         return (end_dt.hour, end_dt.minute) <= (done_by_hour, done_by_min)
 
-    # Class types to exclude (case-insensitive substring match on class_name)
+    def still_upcoming(s) -> bool:
+        """For today's classes: only watch ones that haven't started yet."""
+        if s.date > today:
+            return True
+        return s.dt > now  # today: must be in the future
+
     EXCLUDE_TYPES = ["power30", "intro", "starter50"]
 
     def is_excluded(s) -> bool:
-        name_lower = s.class_name.lower()
-        return any(ex in name_lower for ex in EXCLUDE_TYPES)
+        return any(ex in s.class_name.lower() for ex in EXCLUDE_TYPES)
 
-    # Filter to the watch window: after noon, finishing by 5pm, not Power30/Intro
     target = [
         s for s in slots
-        if s.date == watch_date
+        if s.date in watch_dates
         and s.dt.hour >= after_hour
         and finishes_by(s)
+        and still_upcoming(s)
         and not is_excluded(s)
     ]
-    log.info("Found %d eligible slots on %s between %d:00 and done by %d:%02d (excluded Power30/Intro)",
-             len(target), watch_date, after_hour, done_by_hour, done_by_min)
+    log.info("Found %d eligible slots across %s", len(target), watch_dates)
 
-    # Build current spot map  {slot_key: available_spots}
     def slot_key(s) -> str:
         return f"{s.date}|{s.dt.hour:02d}:{s.dt.minute:02d}|{s.studio}"
 
-    current: dict[str, int] = {slot_key(s): s.available_spots for s in target}
+    current:  dict[str, int] = {slot_key(s): s.available_spots for s in target}
     previous: dict[str, int] = load_spot_state()
 
-    # A spot "opened" if it was 0 (or unseen) before and is now > 0
+    # A spot "opened" = was 0 (or unseen) last run, now > 0
     newly_open = [
         s for s in target
         if s.available_spots > 0 and previous.get(slot_key(s), 0) == 0
