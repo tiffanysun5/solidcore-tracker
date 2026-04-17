@@ -202,16 +202,97 @@ def main() -> None:
         if s.available_spots > 0 and previous.get(slot_key(s), 0) == 0
     ]
 
+    # ── Also watch Nofar 10am–11am tomorrow ──────────────────────────────────
+    nofar_newly_open = _watch_nofar(now, today, slot_key)
+
     save_spot_state(current)
 
-    if not newly_open:
+    all_newly_open = newly_open + nofar_newly_open
+    if not all_newly_open:
         log.info("No newly-opened spots — all good.")
         return
 
     log.info("%d class(es) just opened up: %s",
-             len(newly_open), [slot_key(s) for s in newly_open])
+             len(all_newly_open), [slot_key(s) for s in all_newly_open])
 
-    _send_alert(newly_open, NOTIFY_EMAIL)
+    _send_alert(all_newly_open, NOTIFY_EMAIL)
+
+
+def _watch_nofar(now: datetime, today: date, slot_key) -> list:
+    """Fetch Nofar tomorrow 10am–11am and return any newly-opened slots."""
+    from src.wellhub_api import _gql, SCHEDULE_QUERY, LAT, LNG, ClassSlot
+    from src.state import load_spot_state, save_spot_state
+    from datetime import timezone
+
+    tomorrow = today + timedelta(days=1)
+    NOFAR_PARTNER_ID = "0a283587-673b-4cea-9796-68b5bf387ae1"
+    NOFAR_STUDIO     = "Nofar Method - Flatiron"
+    NOFAR_WATCH_HOURS = {10, 11}   # watch 10am and 11am classes
+
+    start = datetime(tomorrow.year, tomorrow.month, tomorrow.day, 4, 0, 0, tzinfo=timezone.utc)
+    end   = start + timedelta(hours=23, minutes=59, seconds=59)
+
+    try:
+        results = _gql([{
+            "operationName": "partnerClassSchedule",
+            "variables": {
+                "partnerId": NOFAR_PARTNER_ID,
+                "filters": {
+                    "startDate": start.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                    "endDate":   end.strftime("%Y-%m-%dT%H:%M:%S.999Z"),
+                },
+                "deviceLocation": {"coordinates": [LAT, LNG], "type": "shared"},
+            },
+            "query": SCHEDULE_QUERY,
+        }])
+        items = (results[0].get("data", {})
+                 .get("partnerClassSchedule", {})
+                 .get("items", []))
+    except Exception as exc:
+        log.warning("Nofar fetch failed: %s", exc)
+        return []
+
+    from zoneinfo import ZoneInfo
+    ny = ZoneInfo("America/New_York")
+    slots = []
+    for item in items:
+        if item.get("isDisabled"):
+            continue
+        try:
+            dt = datetime.fromisoformat(item["date"].replace("Z", "+00:00")).astimezone(ny)
+        except Exception:
+            continue
+        if dt.hour not in NOFAR_WATCH_HOURS:
+            continue
+        instructors = item.get("instructors", [])
+        instructor  = instructors[0]["name"].split(" - ")[0].strip() if instructors else ""
+        slot = ClassSlot(
+            wellhub_class_id = item.get("id", ""),
+            class_id_gql     = str(item.get("classId", "")),
+            partner_id       = NOFAR_PARTNER_ID,
+            studio           = NOFAR_STUDIO,
+            instructor       = instructor,
+            dt               = dt,
+            available_spots  = item.get("availableSpots", 0),
+            class_name       = item.get("name", ""),
+        )
+        slots.append(slot)
+
+    log.info("Nofar tomorrow 10–11am: %d slots found", len(slots))
+
+    # Load/save nofar-specific state (separate key prefix to avoid Solidcore collision)
+    state = load_spot_state()
+    newly_open = [
+        s for s in slots
+        if s.available_spots > 0 and state.get("nofar|" + slot_key(s), 0) == 0
+    ]
+
+    # Merge nofar state into the shared state dict and save
+    nofar_state = {"nofar|" + slot_key(s): s.available_spots for s in slots}
+    state.update(nofar_state)
+    save_spot_state(state)
+
+    return newly_open
 
 
 if __name__ == "__main__":
