@@ -6,15 +6,6 @@ METHOD:PUBLISH
 X-WR-CALNAME:Solidcore Classes
 X-WR-TIMEZONE:America/New_York
 BEGIN:VEVENT
-UID:9ff2f412-2fb8-4c59-b165-57426639670d@solidcore-tracker
-DTSTART;TZID=America/New_York:20260418T100000
-DTEND;TZID=America/New_York:20260418T105000
-SUMMARY:[solidcore] Nofar Method Flatiron Pilates Class
-LOCATION:Nofar Method - Flatiron
-DESCRIPTION:Studio: Nofar Method - Flatiron\nBooked via Wellhub
-STATUS:CONFIRMED
-END:VEVENT
-BEGIN:VEVENT
 UID:635d106d-ee88-48e3-b851-b746ab6c0d4f@solidcore-tracker
 DTSTART;TZID=America/New_York:20260420T123000
 DTEND;TZID=America/New_York:20260420T132000
@@ -51,9 +42,9 @@ DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
-UID:dc5be8e0-0c1f-4a9f-a173-fe5131a49a6a@solidcore-tracker
-DTSTART;TZID=America/New_York:20260427T153000
-DTEND;TZID=America/New_York:20260427T162000
+UID:71c34af8-4475-4356-85f1-6208d19c4d7c@solidcore-tracker
+DTSTART;TZID=America/New_York:20260427T151500
+DTEND;TZID=America/New_York:20260427T160500
 SUMMARY:[solidcore] Signature50: Full Body
 LOCATION:155 W 23rd St, New York, NY 10011
 DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
@@ -87,6 +78,24 @@ DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
+UID:9ff2f412-2fb8-4c59-b165-57426639670d@solidcore-tracker
+DTSTART;TZID=America/New_York:20260418T100000
+DTEND;TZID=America/New_York:20260418T105000
+SUMMARY:[solidcore] Classes
+LOCATION:Nofar Method - Flatiron
+DESCRIPTION:Studio: Nofar Method - Flatiron\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:23b88d48-a692-4f74-933e-1f6fddeb6f22@solidcore-tracker
+DTSTART;TZID=America/New_York:20260417T140000
+DTEND;TZID=America/New_York:20260417T145000
+SUMMARY:[solidcore] Sessions
+LOCATION:StretchLab Chelsea
+DESCRIPTION:Studio: StretchLab Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
 UID:1d1b831b-426c-4bc5-b521-3e87fd47e4c2@solidcore-tracker
 DTSTART;TZID=America/New_York:20260417T110500
 DTEND;TZID=America/New_York:20260417T115500
@@ -105,16 +114,7 @@ DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
-UID:d2cc23e9-43bb-4409-b02a-9cf886e94fb1@solidcore-tracker
-DTSTART;TZID=America/New_York:20260415T113000
-DTEND;TZID=America/New_York:20260415T122000
-SUMMARY:[solidcore] Classes
-LOCATION:Nofar Method - Flatiron
-DESCRIPTION:Studio: Nofar Method - Flatiron\nBooked via Wellhub
-STATUS:CONFIRMED
-END:VEVENT
-BEGIN:VEVENT
-UID:3f11e10c-2838-49f4-80b6-f0cd713eee0d@solidcore-tracker
+UID:694637402@solidcore-tracker
 DTSTART;TZID=America/New_York:20260414T110500
 DTEND;TZID=America/New_York:20260414T115500
 SUMMARY:[solidcore] Classes
@@ -282,15 +282,6 @@ DTEND;TZID=America/New_York:20260319T072000
 SUMMARY:[solidcore] Classes
 LOCATION:Nofar Method - Flatiron
 DESCRIPTION:Studio: Nofar Method - Flatiron\nBooked via Wellhub
-STATUS:CONFIRMED
-END:VEVENT
-BEGIN:VEVENT
-UID:662698499@solidcore-tracker
-DTSTART;TZID=America/New_York:20260318T101500
-DTEND;TZID=America/New_York:20260318T110500
-SUMMARY:[solidcore] Classes
-LOCATION:155 W 23rd St, New York, NY 10011
-DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 END:VCALENDAR
