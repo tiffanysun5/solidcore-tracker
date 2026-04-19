@@ -275,13 +275,4 @@ LOCATION:[solidcore] Santa Monica
 DESCRIPTION:Studio: Santa Monica\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
-BEGIN:VEVENT
-UID:665068544@solidcore-tracker
-DTSTART;TZID=America/New_York:20260319T063000
-DTEND;TZID=America/New_York:20260319T072000
-SUMMARY:[solidcore] Classes
-LOCATION:Nofar Method - Flatiron
-DESCRIPTION:Studio: Nofar Method - Flatiron\nBooked via Wellhub
-STATUS:CONFIRMED
-END:VEVENT
 END:VCALENDAR
