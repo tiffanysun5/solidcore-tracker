@@ -6,12 +6,12 @@ METHOD:PUBLISH
 X-WR-CALNAME:Solidcore Classes
 X-WR-TIMEZONE:America/New_York
 BEGIN:VEVENT
-UID:635d106d-ee88-48e3-b851-b746ab6c0d4f@solidcore-tracker
-DTSTART;TZID=America/New_York:20260420T123000
-DTEND;TZID=America/New_York:20260420T132000
-SUMMARY:[solidcore] Off-Peak Signature50: Full Body
-LOCATION:[solidcore] Chicago - Streeterville
-DESCRIPTION:Studio: Chicago - Streeterville\nBooked via Wellhub
+UID:5d85a107-b0fc-432a-b59b-8bdea2e9afa9@solidcore-tracker
+DTSTART;TZID=America/New_York:20260421T100000
+DTEND;TZID=America/New_York:20260421T105000
+SUMMARY:[solidcore] Group Class - M3 Fusion
+LOCATION:Studio Lagree River North
+DESCRIPTION:Studio: Studio Lagree River North\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -78,6 +78,15 @@ DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
+UID:9be39027-52a1-4ca9-92df-e32aab0c97ec@solidcore-tracker
+DTSTART;TZID=America/New_York:20260420T123000
+DTEND;TZID=America/New_York:20260420T132000
+SUMMARY:[solidcore] Classes
+LOCATION:[solidcore] Chicago - Streeterville
+DESCRIPTION:Studio: Chicago - Streeterville\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
 UID:9ff2f412-2fb8-4c59-b165-57426639670d@solidcore-tracker
 DTSTART;TZID=America/New_York:20260418T100000
 DTEND;TZID=America/New_York:20260418T105000
@@ -105,7 +114,7 @@ DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
-UID:e0f9dff9-ea53-4f8b-a12a-b3b265a135ac@solidcore-tracker
+UID:698363522@solidcore-tracker
 DTSTART;TZID=America/New_York:20260416T120500
 DTEND;TZID=America/New_York:20260416T125500
 SUMMARY:[solidcore] Classes
