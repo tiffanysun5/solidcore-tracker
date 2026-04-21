@@ -6,15 +6,6 @@ METHOD:PUBLISH
 X-WR-CALNAME:Solidcore Classes
 X-WR-TIMEZONE:America/New_York
 BEGIN:VEVENT
-UID:5d85a107-b0fc-432a-b59b-8bdea2e9afa9@solidcore-tracker
-DTSTART;TZID=America/New_York:20260421T100000
-DTEND;TZID=America/New_York:20260421T105000
-SUMMARY:[solidcore] Group Class - M3 Fusion
-LOCATION:Studio Lagree River North
-DESCRIPTION:Studio: Studio Lagree River North\nBooked via Wellhub
-STATUS:CONFIRMED
-END:VEVENT
-BEGIN:VEVENT
 UID:3422c289-c0ab-4a2b-aecc-e602018c5a57@solidcore-tracker
 DTSTART;TZID=America/New_York:20260422T120500
 DTEND;TZID=America/New_York:20260422T125500
@@ -105,7 +96,7 @@ DESCRIPTION:Studio: StretchLab Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
-UID:1d1b831b-426c-4bc5-b521-3e87fd47e4c2@solidcore-tracker
+UID:685063320@solidcore-tracker
 DTSTART;TZID=America/New_York:20260417T110500
 DTEND;TZID=America/New_York:20260417T115500
 SUMMARY:[solidcore] Classes
