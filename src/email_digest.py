@@ -375,7 +375,7 @@ def _book_btn(m: MatchedClass) -> str:
 def _monthly_reminder_section(all_bookings: list, month_start, today, monthly_studios: list) -> str:
     """Show a reminder pill for each monthly studio if not yet visited this month."""
     from src.config import MONTHLY_LIMITS
-    labels = {"othership": "Othership", "stretch": "Stretch*d", "nofar": "Nofar"}
+    labels = {"othership": "Othership", "stretch*d": "Stretch*d", "nofar": "Nofar"}
     items = []
     for keyword in monthly_studios:
         label = labels.get(keyword, keyword.title())
@@ -387,8 +387,11 @@ def _monthly_reminder_section(all_bookings: list, month_start, today, monthly_st
         ]
 
         if monthly_limit is not None:
-            # Show X/N counter (late cancels already count since Wellhub charges the check-in)
-            count = len(month_visits)
+            # Merge API visits into persistent cache so visits never fall off the API window
+            from src.state import merge_visits
+            api_dates = [b.dt.date() for b in month_visits]
+            all_dates = merge_visits(keyword, api_dates)
+            count = len(all_dates)
             if count >= monthly_limit:
                 bg, fg = "#fee2e2", "#991b1b"
                 text = f"🚫 {label} — {count}/{monthly_limit} limit reached"

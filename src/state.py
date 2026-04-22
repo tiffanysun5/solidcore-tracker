@@ -73,3 +73,47 @@ def save_spot_state(spots: dict[str, int]) -> None:
         json.dumps({"spots": spots, "updated": date.today().isoformat()}, indent=2)
     )
     log.info("Spot state saved: %d slots tracked", len(spots))
+
+
+# ── Persistent completed-visit cache ─────────────────────────────────────────
+# Accumulates completed visits so they never fall off the API's short window.
+# Format: {"YYYY-MM": ["YYYY-MM-DD", ...], ...}
+
+def load_visit_cache() -> dict[str, list[str]]:
+    """Return {month_str: [date_str, ...]} of all known completed visits."""
+    f = STATE_DIR / "visit_cache.json"
+    if f.exists():
+        try:
+            return json.loads(f.read_text())
+        except Exception as exc:
+            log.warning("Could not read visit_cache.json: %s", exc)
+    return {}
+
+
+def save_visit_cache(cache: dict[str, list[str]]) -> None:
+    STATE_DIR.mkdir(exist_ok=True)
+    (STATE_DIR / "visit_cache.json").write_text(json.dumps(cache, indent=2))
+
+
+# Known visits that fell off the API window — seeded here so Actions cache
+# gets the right count on first run.  Add entries whenever the API misses one.
+_VISIT_SEEDS: dict[str, list[str]] = {
+    "2026-04|nofar": ["2026-04-02", "2026-04-07", "2026-04-10", "2026-04-15", "2026-04-18"],
+}
+
+
+def merge_visits(studio_keyword: str, new_dates: list[date]) -> list[date]:
+    """
+    Merge newly-seen visit dates for studio_keyword into the cache and return
+    the full known list for the current month.
+    """
+    month_key = date.today().strftime("%Y-%m") + "|" + studio_keyword
+    cache = load_visit_cache()
+    # Start from seeds so known-historical visits are never lost
+    existing = set(_VISIT_SEEDS.get(month_key, []))
+    existing.update(cache.get(month_key, []))
+    for d in new_dates:
+        existing.add(d.isoformat())
+    cache[month_key] = sorted(existing)
+    save_visit_cache(cache)
+    return [date.fromisoformat(s) for s in cache[month_key]]

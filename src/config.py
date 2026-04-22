@@ -49,7 +49,7 @@ EXTRA_STUDIOS = {
 
 # Monthly once-per-month studios — reminder shown in email if not yet visited this month.
 # Matched against studio name in Wellhub check-in history (case-insensitive substring).
-MONTHLY_STUDIOS = ["othership", "stretch", "nofar"]
+MONTHLY_STUDIOS = ["othership", "stretch*d", "nofar"]
 
 # Per-studio monthly class limits.  Tracked in the email's monthly section.
 # late cancels count (they consume a Wellhub check-in just like attendance).
