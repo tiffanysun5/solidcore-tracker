@@ -39,13 +39,6 @@ jobs:
           GOOGLE_CALENDAR_ICS_URL: ${{ secrets.GOOGLE_CALENDAR_ICS_URL }}
         run: python check_wellhub.py
 
-      - name: Watch for open spots (tomorrow after 12pm, done by 5pm)
-        env:
-          WELLHUB_REFRESH_TOKEN:  ${{ secrets.WELLHUB_REFRESH_TOKEN }}
-          SMTP_USER:              ${{ secrets.SMTP_USER }}
-          SMTP_PASSWORD:          ${{ secrets.SMTP_PASSWORD }}
-          APP_REPO:               ${{ secrets.APP_REPO }}
-          WATCH_AFTER_HOUR:       "12"
-          WATCH_DONE_BY_HOUR:     "17"
-          WATCH_DONE_BY_MIN:      "0"
-        run: python watch_spots.py
+      # Spot watcher disabled — run manually via workflow_dispatch when needed
+      # - name: Watch for open spots
+      #   run: python watch_spots.py
