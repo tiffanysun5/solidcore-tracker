@@ -227,11 +227,13 @@ def _build_email(
                     cancel_warn = (f'<br><span style="font-size:10px;color:#dc2626;font-weight:600">'
                                    f'🚫 Late cancel window closed</span>')
 
+            type_badge = _class_type_badge(slot.class_name) if slot and slot.class_name else ""
+            type_str   = f"&nbsp;{type_badge}" if type_badge else ""
             rows += (
                 f'<tr><td style="white-space:nowrap;color:#374151;font-weight:500">{b.dt.strftime("%a %b %-d")}</td>'
                 f'<td style="white-space:nowrap;color:#6b7280">{b.dt.strftime("%-I:%M %p")}</td>'
                 f'<td style="color:#2563eb;font-weight:500;white-space:nowrap">{studio}{cancel_warn}</td>'
-                f'<td style="color:#111;width:50%;padding-left:24px">{title}{cancel_btn}</td>'
+                f'<td style="color:#111;width:50%;padding-left:24px">{title}{type_str}{cancel_btn}</td>'
                 f'<td style="line-height:1.6;padding-left:32px;white-space:nowrap">{focus_cell}</td></tr>'
             )
         booked_tbl = (
@@ -299,6 +301,29 @@ def _build_email(
     return subject, html
 
 
+def _class_type_badge(class_name: str) -> str:
+    """Extract class type from API name and return a styled badge, or '' for standard Signature50."""
+    raw = class_name.split("|", 1)[-1].strip() if "|" in class_name else class_name
+    type_part = raw.split(":")[0].strip() if ":" in raw else raw.strip()
+    tl = type_part.lower()
+    if "power30" in tl:
+        return (f'<span style="background:#fee2e2;color:#991b1b;font-size:9px;font-weight:700;'
+                f'padding:1px 5px;border-radius:3px;white-space:nowrap">⚡ Power30</span>')
+    if "starter50" in tl or "intro" in tl:
+        return (f'<span style="background:#fee2e2;color:#991b1b;font-size:9px;font-weight:700;'
+                f'padding:1px 5px;border-radius:3px;white-space:nowrap">🚫 Intro</span>')
+    if "focus50" in tl:
+        return (f'<span style="background:#ede9fe;color:#5b21b6;font-size:9px;font-weight:700;'
+                f'padding:1px 5px;border-radius:3px;white-space:nowrap">🎯 Focus50</span>')
+    if "advanced50" in tl:
+        return (f'<span style="background:#dbeafe;color:#1e40af;font-size:9px;font-weight:700;'
+                f'padding:1px 5px;border-radius:3px;white-space:nowrap">🔥 Advanced</span>')
+    if "off-peak" in tl:
+        return (f'<span style="background:#f3f4f6;color:#6b7280;font-size:9px;font-weight:700;'
+                f'padding:1px 5px;border-radius:3px;white-space:nowrap">Off-Peak</span>')
+    return ""  # Standard Signature50 — no badge needed
+
+
 def _match_section(matches: list[MatchedClass], title: str, empty_msg: str = "") -> str:
     pref   = [m for m in matches if m.preferred_time]
     backup = [m for m in matches if not m.preferred_time]
@@ -341,12 +366,14 @@ def _rows(matches: list[MatchedClass], kind: str) -> str:
         sp = m.slot.available_spots
         spots_str = (f'<br><span style="color:#6b7280;font-size:11px">({sp} spot{"s" if sp != 1 else ""})</span>'
                      if sp is not None else "")
+        type_badge = _class_type_badge(m.slot.class_name)
+        type_str   = f"<br>{type_badge}" if type_badge else ""
         html += (
             f'<tr class="{row_cls}">'
             f"<td style='white-space:nowrap'>{m.slot.date_str}</td>"
             f"<td style='white-space:nowrap'>{m.slot.time_str}<br>{badge}</td>"
             f'<td style="color:{s_color};font-weight:500">{m.slot.studio}</td>'
-            f"<td>{m.slot.instructor}</td>"
+            f"<td>{m.slot.instructor}{type_str}</td>"
             f'<td><span class="muscle">{target}</span>{sec_str}{spots_str}</td>'
             f"<td>{_book_btn(m)}</td>"
             f"</tr>"
@@ -625,10 +652,12 @@ def _all_classes_section(slots: list, today, booked_dates: set, focus_map: dict)
                  f'<span style="font-weight:400;color:{muscle_color};margin-left:10px;font-size:10px">'
                  f'{muscle_str}</span></td></tr>')
         for s in by_day[d]:
-            s_color = "#2563eb" if "Chelsea" in s.studio else "#7c3aed"
-            sp = s.available_spots
-            spots_str = (f'<span style="color:#6b7280;font-size:11px">({sp} spot{"s" if sp != 1 else ""})</span>'
-                         if sp is not None else "")
+            s_color    = "#2563eb" if "Chelsea" in s.studio else "#7c3aed"
+            sp         = s.available_spots
+            spots_str  = (f'<span style="color:#6b7280;font-size:11px">({sp} spot{"s" if sp != 1 else ""})</span>'
+                          if sp is not None else "")
+            type_badge = _class_type_badge(s.class_name)
+            type_str   = f"&nbsp;{type_badge}" if type_badge else ""
             params = urllib.parse.urlencode({
                 "class_id": s.wellhub_class_id, "class_id_gql": s.class_id_gql,
                 "partner_id": s.partner_id, "studio": s.studio,
@@ -643,7 +672,7 @@ def _all_classes_section(slots: list, today, booked_dates: set, focus_map: dict)
                 f'<tr style="background:#fff">'
                 f'<td style="white-space:nowrap;padding:6px 8px;border-bottom:1px solid #f5f5f5;color:#374151">{s.time_str}</td>'
                 f'<td style="padding:6px 8px;border-bottom:1px solid #f5f5f5;color:{s_color};font-weight:500;white-space:nowrap">{s.studio}</td>'
-                f'<td style="padding:6px 8px;border-bottom:1px solid #f5f5f5;color:#111">{s.instructor}</td>'
+                f'<td style="padding:6px 8px;border-bottom:1px solid #f5f5f5;color:#111">{s.instructor}{type_str}</td>'
                 f'<td style="padding:6px 8px;border-bottom:1px solid #f5f5f5">{spots_str}</td>'
                 f'<td style="padding:6px 8px;border-bottom:1px solid #f5f5f5">{btn}</td>'
                 f'</tr>'
