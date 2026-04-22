@@ -55,6 +55,26 @@ def mark_sent_today() -> None:
 
 # ── Spot-watch state ──────────────────────────────────────────────────────────
 
+def load_auto_booked_days() -> set[str]:
+    """Return set of ISO date strings for which auto-booking was already attempted."""
+    f = STATE_DIR / "auto_booked.json"
+    if f.exists():
+        try:
+            return set(json.loads(f.read_text()).get("days", []))
+        except Exception as exc:
+            log.warning("Could not read auto_booked.json: %s", exc)
+    return set()
+
+
+def save_auto_booked_days(days: set[str]) -> None:
+    """Persist the set of dates for which auto-booking has been attempted."""
+    STATE_DIR.mkdir(exist_ok=True)
+    (STATE_DIR / "auto_booked.json").write_text(
+        json.dumps({"days": sorted(days), "updated": date.today().isoformat()}, indent=2)
+    )
+    log.info("Auto-booked days saved: %s", sorted(days))
+
+
 def load_spot_state() -> dict[str, int]:
     """Return saved {slot_key: available_spots} from the last run."""
     f = STATE_DIR / "spot_watch_state.json"
