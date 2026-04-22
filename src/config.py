@@ -74,10 +74,7 @@ TRAVEL_CITIES: dict[str, dict] = {
             "Boystown":       "5c45a8f9-adcb-4985-aabc-96b00234298f",
             "Lincoln Park":   "ce72eb32-7e9f-4b8b-a7e7-8f8c7ef4861a",
         },
-        # Fallback hardcoded windows when no ICS available (ISO date strings, inclusive)
-        "hardcoded_windows": [
-            ("2026-04-18", "2026-04-21"),
-        ],
+        "hardcoded_windows": [],
     },
     "Boston": {
         "timezone": "America/New_York",
