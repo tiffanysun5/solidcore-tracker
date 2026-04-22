@@ -271,7 +271,7 @@ def _build_email(
     extra_upcoming = [s for s in extra_slots if today <= s.date <= extra_cutoff]
     extra_sec = _extra_section(extra_upcoming, booked_dates=booked_dates_set) if extra_upcoming else ""
 
-    # All Solidcore classes — next 5 days, no filters
+    # All Solidcore classes — next 10 days, no filters
     all_slots_sec = _all_classes_section(slots, today, booked_dates_set, focus_map)
 
     # Travel section
@@ -615,12 +615,12 @@ def _daily_quote(today, focus_map: dict | None = None) -> str:
 
 
 def _all_classes_section(slots: list, today, booked_dates: set, focus_map: dict) -> str:
-    """All available Solidcore classes for the next 5 days — no instructor/muscle filter."""
+    """All available Solidcore classes for the next 10 days — no instructor/muscle filter."""
     from src.config import BACKUP_START_HOUR, BACKUP_END_HOUR, TARGET_MUSCLES
     from datetime import timedelta
     from collections import defaultdict
 
-    cutoff = today + timedelta(days=5)
+    cutoff = today + timedelta(days=10)
     window = [s for s in slots
               if today <= s.date <= cutoff
               and BACKUP_START_HOUR <= s.dt.hour < BACKUP_END_HOUR]
@@ -680,7 +680,7 @@ def _all_classes_section(slots: list, today, booked_dates: set, focus_map: dict)
 
     return f"""
       <div class="sec">
-        <p class="sec-title">📋 All Solidcore classes — next 5 days</p>
+        <p class="sec-title">📋 All Solidcore classes — next 10 days</p>
         <table>
           <thead><tr>
             <th>Time</th><th>Studio</th><th>Instructor</th><th>Spots</th><th></th>
