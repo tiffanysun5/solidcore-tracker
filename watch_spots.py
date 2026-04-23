@@ -231,15 +231,64 @@ def main() -> None:
     log.info("Watching %s | after %d:00, done by %d:%02d, excl %s",
              watch_dates, after_hour, done_by_hour, done_by_min, EXCLUDE_TYPES)
 
-    from src.wellhub_api import get_schedule, get_upcoming_bookings
+    from src.wellhub_api import get_schedule, get_upcoming_bookings, _gql, SCHEDULE_QUERY, LAT, LNG, ClassSlot
     from src.state import load_spot_state, save_spot_state
     from src.config import NOTIFY_EMAIL
+    from datetime import timezone
 
     try:
         slots = get_schedule()
     except Exception as exc:
         log.error("Could not fetch schedule: %s", exc)
         return
+
+    # Fetch extra studios for the watch dates (comma-sep "id:Name" pairs in WATCH_EXTRA_PARTNERS)
+    extra_partners_raw = os.getenv("WATCH_EXTRA_PARTNERS", "")
+    for pair in extra_partners_raw.split(","):
+        pair = pair.strip()
+        if not pair or ":" not in pair:
+            continue
+        pid, _, sname = pair.partition(":")
+        pid = pid.strip(); sname = sname.strip()
+        for watch_date in watch_dates:
+            start = datetime(watch_date.year, watch_date.month, watch_date.day, 4, 0, 0, tzinfo=timezone.utc)
+            end_dt = start + timedelta(hours=23, minutes=59, seconds=59)
+            try:
+                results = _gql([{
+                    "operationName": "partnerClassSchedule",
+                    "variables": {
+                        "partnerId": pid,
+                        "filters": {
+                            "startDate": start.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                            "endDate":   end_dt.strftime("%Y-%m-%dT%H:%M:%S.999Z"),
+                        },
+                        "deviceLocation": {"coordinates": [LAT, LNG], "type": "shared"},
+                    },
+                    "query": SCHEDULE_QUERY,
+                }])
+                items = results[0].get("data", {}).get("partnerClassSchedule", {}).get("items", [])
+                for item in items:
+                    if item.get("isDisabled"):
+                        continue
+                    dt_raw = item.get("date", "")
+                    try:
+                        dt = datetime.fromisoformat(dt_raw.replace("Z", "+00:00")).astimezone(ny)
+                    except Exception:
+                        continue
+                    instr = (item.get("instructors") or [{}])[0].get("name", "").split(" - ")[0].strip()
+                    slots.append(ClassSlot(
+                        wellhub_class_id=item["id"],
+                        studio=sname,
+                        instructor=instr,
+                        dt=dt,
+                        class_id_gql=str(item.get("classId", "")),
+                        partner_id=pid,
+                        available_spots=item.get("availableSpots", 0),
+                        class_name=item.get("name", ""),
+                    ))
+                log.info("Extra studio %s on %s: %d slots", sname, watch_date, len(items))
+            except Exception as exc:
+                log.warning("Extra studio fetch error %s %s: %s", sname, watch_date, exc)
 
     # Find any upcoming booking on a different day that may need cancelling first
     # (e.g. Friday class when watching for Thursday openings).

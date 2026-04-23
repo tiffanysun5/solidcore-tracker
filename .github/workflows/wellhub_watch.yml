@@ -54,5 +54,6 @@ jobs:
           WATCH_DONE_BY_HOUR:    "15"
           WATCH_DONE_BY_MIN:     "50"
           WATCH_EXCLUDE:         "focus50"
+          WATCH_EXTRA_PARTNERS:  "85e3823f-8006-4939-91c9-5485a89c5f55:NoLita,5489fe69-4649-4214-9258-310e52586c74:Nomad"
           NOTIFY_SMS:            "5167105653@vtext.com"
         run: python watch_spots.py
