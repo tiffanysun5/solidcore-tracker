@@ -6,15 +6,6 @@ METHOD:PUBLISH
 X-WR-CALNAME:Solidcore Classes
 X-WR-TIMEZONE:America/New_York
 BEGIN:VEVENT
-UID:5919f333-bd1f-4aae-b462-7b1885f70c70@solidcore-tracker
-DTSTART;TZID=America/New_York:20260423T101500
-DTEND;TZID=America/New_York:20260423T110500
-SUMMARY:[solidcore] Signature50: Full Body | Hannah Montana x Miley Cyrus
-LOCATION:155 W 23rd St, New York, NY 10011
-DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
-STATUS:CONFIRMED
-END:VEVENT
-BEGIN:VEVENT
 UID:6335626b-318e-48aa-b89e-e25589f57bdb@solidcore-tracker
 DTSTART;TZID=America/New_York:20260424T120500
 DTEND;TZID=America/New_York:20260424T125500
@@ -51,6 +42,15 @@ DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
+UID:5919f333-bd1f-4aae-b462-7b1885f70c70@solidcore-tracker
+DTSTART;TZID=America/New_York:20260423T101500
+DTEND;TZID=America/New_York:20260423T110500
+SUMMARY:[solidcore] Classes
+LOCATION:155 W 23rd St, New York, NY 10011
+DESCRIPTION:Studio: Chelsea\nBooked via Wellhub
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
 UID:76b6ecc4-81cc-4630-9701-7d04d7604bd5@solidcore-tracker
 DTSTART;TZID=America/New_York:20260422T120500
 DTEND;TZID=America/New_York:20260422T125500
@@ -69,7 +69,7 @@ DESCRIPTION:Studio: Chicago - Streeterville\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
-UID:9ff2f412-2fb8-4c59-b165-57426639670d@solidcore-tracker
+UID:700245395@solidcore-tracker
 DTSTART;TZID=America/New_York:20260418T100000
 DTEND;TZID=America/New_York:20260418T105000
 SUMMARY:[solidcore] Classes
@@ -237,15 +237,6 @@ DTEND;TZID=America/New_York:20260325T160000
 SUMMARY:[solidcore] Classes
 LOCATION:[solidcore] Roslyn
 DESCRIPTION:Studio: Roslyn\nBooked via Wellhub
-STATUS:CONFIRMED
-END:VEVENT
-BEGIN:VEVENT
-UID:669610218@solidcore-tracker
-DTSTART;TZID=America/New_York:20260323T090000
-DTEND;TZID=America/New_York:20260323T095000
-SUMMARY:[solidcore] Classes
-LOCATION:[solidcore] Santa Monica
-DESCRIPTION:Studio: Santa Monica\nBooked via Wellhub
 STATUS:CONFIRMED
 END:VEVENT
 END:VCALENDAR
