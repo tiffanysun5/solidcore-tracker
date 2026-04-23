@@ -54,4 +54,5 @@ jobs:
           WATCH_DONE_BY_HOUR:    "15"
           WATCH_DONE_BY_MIN:     "50"
           WATCH_EXCLUDE:         "focus50"
+          NOTIFY_SMS:            "5167105653@vtext.com"
         run: python watch_spots.py

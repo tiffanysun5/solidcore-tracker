@@ -120,6 +120,26 @@ def _send_alert(slots: list, to_email: str) -> None:
     except Exception as exc:
         log.error("Failed to send alert email: %s", exc)
 
+    # ── SMS via Verizon email-to-text gateway ─────────────────────────────
+    sms_addr = os.getenv("NOTIFY_SMS", "")
+    if sms_addr:
+        lines = [f"🍑 Spot open! Solidcore {date_label}"]
+        for s in slots:
+            lines.append(f"{s.time_str} · {s.studio} · {s.instructor} · {s.available_spots} spot{'s' if s.available_spots != 1 else ''}")
+        sms_text = "\n".join(lines)
+        sms_msg = MIMEText(sms_text)
+        sms_msg["Subject"] = ""
+        sms_msg["From"]    = SMTP_USER
+        sms_msg["To"]      = sms_addr
+        try:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
+                s.starttls()
+                s.login(SMTP_USER, SMTP_PASS)
+                s.sendmail(SMTP_USER, sms_addr, sms_msg.as_string())
+            log.info("SMS alert sent to %s", sms_addr)
+        except Exception as exc:
+            log.error("Failed to send SMS alert: %s", exc)
+
 
 def main() -> None:
     if not os.environ.get("WELLHUB_REFRESH_TOKEN"):
