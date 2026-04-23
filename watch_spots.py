@@ -10,6 +10,7 @@ Sends an alert email when spots open.  Run hourly alongside check_wellhub.py.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import smtplib
@@ -57,13 +58,26 @@ def _book_url(slot) -> str:
     return f"https://{owner}.github.io/{repo}/book.html?{params}"
 
 
-def _cancel_url(booking) -> str:
+def _cancel_url(booking, open_slots: list | None = None) -> str:
     owner, _, repo = GITHUB_REPO.partition("/")
+    alts = []
+    for s in (open_slots or []):
+        alts.append({
+            "cid":  s.wellhub_class_id,
+            "cgql": s.class_id_gql,
+            "pid":  s.partner_id,
+            "s":    s.studio,
+            "i":    s.instructor,
+            "t":    f"{s.date_str} {s.time_str}",
+            "m":    "",
+            "sp":   s.available_spots,
+        })
     params = urllib.parse.urlencode({
         "attendance_id": booking.attendance_id,
         "studio":        booking.studio_name,
         "dt":            booking.dt.strftime("%a %b %-d %-I:%M %p"),
         "repo":          GITHUB_REPO,
+        "alts":          json.dumps(alts),
     })
     return f"https://{owner}.github.io/{repo}/cancel.html?{params}"
 
@@ -89,12 +103,14 @@ def _send_alert(slots: list, to_email: str, cancel_booking=None) -> None:
 
     date_label = slots[0].date_str if slots else "tomorrow"
 
-    # Optional cancel banner for an existing booking that must be dropped first
+    # If there's an existing booking to cancel first, build a single combined URL
+    # (cancel.html with open slots pre-loaded as alts — cancel then book in one page)
     cancel_html = ""
+    combined_url = None
     if cancel_booking:
-        cancel_url = _cancel_url(cancel_booking)
-        cb_dt      = cancel_booking.dt.strftime("%a %b %-d %-I:%M %p")
-        cb_studio  = cancel_booking.studio_name
+        combined_url = _cancel_url(cancel_booking, open_slots=slots)
+        cb_dt     = cancel_booking.dt.strftime("%a %b %-d %-I:%M %p")
+        cb_studio = cancel_booking.studio_name
         cancel_html = (
             f"<div style='margin:0 28px 0;padding:14px 16px;background:#fef2f2;"
             f"border:1px solid #fecaca;border-radius:8px;display:flex;"
@@ -102,9 +118,9 @@ def _send_alert(slots: list, to_email: str, cancel_booking=None) -> None:
             f"<div style='font-size:13px;color:#991b1b'>"
             f"<strong>Cancel first:</strong> {cb_studio} · {cb_dt}"
             f"</div>"
-            f"<a href='{cancel_url}' style='background:#dc2626;color:#fff;padding:7px 14px;"
+            f"<a href='{combined_url}' style='background:#dc2626;color:#fff;padding:7px 14px;"
             f"border-radius:6px;text-decoration:none;font-size:13px;font-weight:700;"
-            f"white-space:nowrap'>Cancel →</a>"
+            f"white-space:nowrap'>Cancel &amp; book →</a>"
             f"</div>"
         )
 
@@ -158,9 +174,10 @@ def _send_alert(slots: list, to_email: str, cancel_booking=None) -> None:
         lines = [f"🍑 Spot open! Solidcore {date_label}"]
         for s in slots:
             lines.append(f"{s.time_str} · {s.studio} · {s.instructor} · {s.available_spots} spot{'s' if s.available_spots != 1 else ''}")
-        if cancel_booking:
-            cb_dt = cancel_booking.dt.strftime("%a %-I:%M %p")
-            lines.append(f"⚠️ Cancel {cb_dt} first — check email for link")
+        if combined_url:
+            lines.append(f"Cancel & book → {combined_url}")
+        elif slots:
+            lines.append(_book_url(slots[0]))
         sms_text = "\n".join(lines)
         sms_msg = MIMEText(sms_text)
         sms_msg["Subject"] = ""

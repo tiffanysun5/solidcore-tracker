@@ -97,10 +97,16 @@
   <div id="confirm">
     <h1>Cancel booking?</h1>
     <div class="details" id="details"></div>
+    <div id="pre-alts" style="display:none;margin-bottom:20px">
+      <h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:#111">
+        🍑 Open spots — book after cancelling
+      </h2>
+      <div id="pre-alt-list"></div>
+    </div>
     <button class="btn" id="cancel-btn" onclick="cancelClass()">Cancel this class →</button>
     <div id="status"></div>
-    <div id="alternatives">
-      <h2>🍑 Same-day alternatives</h2>
+    <div id="alternatives" style="margin-top:20px">
+      <h2>✅ Cancelled — book now</h2>
       <div id="alt-list"></div>
     </div>
     <br>
@@ -137,10 +143,8 @@
     return `https://${ghOwner}.github.io/${ghRepo}/book.html?${p.toString()}`;
   }
 
-  function showAlternatives() {
-    if (!alts.length) return;
-    const container = document.getElementById('alt-list');
-    container.innerHTML = alts.map(a => {
+  function renderAltCards(alts) {
+    return alts.map(a => {
       const spotsHtml = (a.sp != null)
         ? `<span class="alt-spots">${a.sp} spot${a.sp !== 1 ? 's' : ''}</span>`
         : '';
@@ -157,7 +161,19 @@
           <a class="alt-btn" href="${buildBookUrl(a)}">Book →</a>
         </div>`;
     }).join('');
+  }
+
+  function showPreAlts() {
+    if (!alts.length) return;
+    document.getElementById('pre-alt-list').innerHTML = renderAltCards(alts);
+    document.getElementById('pre-alts').style.display = 'block';
+  }
+
+  function showAlternatives() {
+    if (!alts.length) return;
+    document.getElementById('alt-list').innerHTML = renderAltCards(alts);
     document.getElementById('alternatives').style.display = 'block';
+    document.getElementById('pre-alts').style.display = 'none';
   }
 
   function init() {
@@ -178,6 +194,7 @@
       <div class="row"><span class="lbl">Studio</span><span class="val">${escHtml(studio)}</span></div>
       <div class="row"><span class="lbl">Date &amp; time</span><span class="val">${escHtml(dt)}</span></div>
     `;
+    showPreAlts();
   }
 
   function saveToken() {
