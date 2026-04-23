@@ -57,7 +57,18 @@ def _book_url(slot) -> str:
     return f"https://{owner}.github.io/{repo}/book.html?{params}"
 
 
-def _send_alert(slots: list, to_email: str) -> None:
+def _cancel_url(booking) -> str:
+    owner, _, repo = GITHUB_REPO.partition("/")
+    params = urllib.parse.urlencode({
+        "attendance_id": booking.attendance_id,
+        "studio":        booking.studio_name,
+        "dt":            booking.dt.strftime("%a %b %-d %-I:%M %p"),
+        "repo":          GITHUB_REPO,
+    })
+    return f"https://{owner}.github.io/{repo}/cancel.html?{params}"
+
+
+def _send_alert(slots: list, to_email: str, cancel_booking=None) -> None:
     rows = ""
     for s in slots:
         sp = s.available_spots
@@ -77,6 +88,26 @@ def _send_alert(slots: list, to_email: str) -> None:
         )
 
     date_label = slots[0].date_str if slots else "tomorrow"
+
+    # Optional cancel banner for an existing booking that must be dropped first
+    cancel_html = ""
+    if cancel_booking:
+        cancel_url = _cancel_url(cancel_booking)
+        cb_dt      = cancel_booking.dt.strftime("%a %b %-d %-I:%M %p")
+        cb_studio  = cancel_booking.studio_name
+        cancel_html = (
+            f"<div style='margin:0 28px 0;padding:14px 16px;background:#fef2f2;"
+            f"border:1px solid #fecaca;border-radius:8px;display:flex;"
+            f"align-items:center;justify-content:space-between;gap:12px'>"
+            f"<div style='font-size:13px;color:#991b1b'>"
+            f"<strong>Cancel first:</strong> {cb_studio} · {cb_dt}"
+            f"</div>"
+            f"<a href='{cancel_url}' style='background:#dc2626;color:#fff;padding:7px 14px;"
+            f"border-radius:6px;text-decoration:none;font-size:13px;font-weight:700;"
+            f"white-space:nowrap'>Cancel →</a>"
+            f"</div>"
+        )
+
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;margin:0;padding:20px">
@@ -85,6 +116,7 @@ def _send_alert(slots: list, to_email: str) -> None:
     <h1 style="margin:0;font-size:20px">🍑 Spot opened up!</h1>
     <p style="margin:6px 0 0;font-size:13px;opacity:.85">Solidcore {date_label} — a class just became available</p>
   </div>
+  {cancel_html}
   <div style="padding:20px 28px">
     <table style="width:100%;border-collapse:collapse">
       <thead>
@@ -126,6 +158,9 @@ def _send_alert(slots: list, to_email: str) -> None:
         lines = [f"🍑 Spot open! Solidcore {date_label}"]
         for s in slots:
             lines.append(f"{s.time_str} · {s.studio} · {s.instructor} · {s.available_spots} spot{'s' if s.available_spots != 1 else ''}")
+        if cancel_booking:
+            cb_dt = cancel_booking.dt.strftime("%a %-I:%M %p")
+            lines.append(f"⚠️ Cancel {cb_dt} first — check email for link")
         sms_text = "\n".join(lines)
         sms_msg = MIMEText(sms_text)
         sms_msg["Subject"] = ""
@@ -179,7 +214,7 @@ def main() -> None:
     log.info("Watching %s | after %d:00, done by %d:%02d, excl %s",
              watch_dates, after_hour, done_by_hour, done_by_min, EXCLUDE_TYPES)
 
-    from src.wellhub_api import get_schedule
+    from src.wellhub_api import get_schedule, get_upcoming_bookings
     from src.state import load_spot_state, save_spot_state
     from src.config import NOTIFY_EMAIL
 
@@ -188,6 +223,21 @@ def main() -> None:
     except Exception as exc:
         log.error("Could not fetch schedule: %s", exc)
         return
+
+    # Find any upcoming booking on a different day that may need cancelling first
+    # (e.g. Friday class when watching for Thursday openings).
+    # We look for Solidcore bookings NOT on the watch dates and surface the soonest one.
+    cancel_booking = None
+    try:
+        bookings = get_upcoming_bookings()
+        upcoming = [b for b in bookings if not b.completed and b.dt > now
+                    and b.date not in watch_dates
+                    and "[solidcore]" in b.studio_name.lower()]
+        if upcoming:
+            cancel_booking = min(upcoming, key=lambda b: b.dt)
+            log.info("Cancel-first booking found: %s %s", cancel_booking.studio_name, cancel_booking.dt)
+    except Exception as exc:
+        log.warning("Could not fetch bookings for cancel banner: %s", exc)
 
     def finishes_by(s) -> bool:
         end_dt = s.dt + timedelta(minutes=class_duration_min)
@@ -237,7 +287,7 @@ def main() -> None:
     log.info("%d class(es) just opened up: %s",
              len(all_newly_open), [slot_key(s) for s in all_newly_open])
 
-    _send_alert(all_newly_open, NOTIFY_EMAIL)
+    _send_alert(all_newly_open, NOTIFY_EMAIL, cancel_booking=cancel_booking)
 
 
 def _watch_nofar(now: datetime, today: date, slot_key) -> list:
