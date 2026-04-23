@@ -2,8 +2,8 @@ name: Wellhub change watcher
 
 on:
   schedule:
-    # Run every 15 min between 8am–10pm ET (12:00–02:00 UTC next day)
-    - cron: "0,15,30,45 12-23,0-2 * * *"
+    # Every 5 min between 8am–10pm ET (bumped up for Apr 24 spot watch; revert to 0,15,30,45 after)
+    - cron: "*/5 12-23,0-2 * * *"
   workflow_dispatch:
 
 jobs:
