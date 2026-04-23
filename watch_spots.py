@@ -152,8 +152,12 @@ def main() -> None:
         log.info("All watch dates have passed — nothing to do.")
         return
 
-    log.info("Watching %s | after %d:00, done by %d:%02d, excl Power30/Intro",
-             watch_dates, after_hour, done_by_hour, done_by_min)
+    # WATCH_EXCLUDE: comma-separated extra class type keywords to skip (on top of defaults)
+    _extra_excl = [x.strip().lower() for x in os.getenv("WATCH_EXCLUDE", "").split(",") if x.strip()]
+    EXCLUDE_TYPES = ["power30", "intro", "starter50"] + _extra_excl
+
+    log.info("Watching %s | after %d:00, done by %d:%02d, excl %s",
+             watch_dates, after_hour, done_by_hour, done_by_min, EXCLUDE_TYPES)
 
     from src.wellhub_api import get_schedule
     from src.state import load_spot_state, save_spot_state
@@ -174,8 +178,6 @@ def main() -> None:
         if s.date > today:
             return True
         return s.dt > now  # today: must be in the future
-
-    EXCLUDE_TYPES = ["power30", "intro", "starter50"]
 
     def is_excluded(s) -> bool:
         return any(ex in s.class_name.lower() for ex in EXCLUDE_TYPES)

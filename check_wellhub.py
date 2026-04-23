@@ -269,7 +269,19 @@ def main() -> None:
     removed = saved_ids   - current_ids
 
     # ── Auto-book new day ──────────────────────────────────────────────────
-    auto_booked = _try_auto_book(today, booked_dates)
+    # Only attempt after AUTO_BOOK_START_DATE (classes go live on that date).
+    auto_book_start_str = os.getenv("AUTO_BOOK_START_DATE", "")
+    auto_book_enabled = True
+    if auto_book_start_str:
+        try:
+            auto_book_start = date.fromisoformat(auto_book_start_str)
+            if today < auto_book_start:
+                log.info("Auto-booking not active yet (starts %s, today is %s)", auto_book_start, today)
+                auto_book_enabled = False
+        except ValueError:
+            pass
+
+    auto_booked = _try_auto_book(today, booked_dates) if auto_book_enabled else False
 
     if not added and not removed and not auto_booked:
         log.info("No booking changes detected — nothing to do.")
