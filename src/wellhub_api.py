@@ -233,77 +233,60 @@ SCHEDULE_QUERY = (
 )
 
 def get_schedule(email: str = "", password: str = "", headless: bool = True) -> list[ClassSlot]:
-    """Fetch Solidcore classes for the next BOOKING_WINDOW_DAYS from both studios."""
-    slots: list[ClassSlot] = []
+    """Fetch Solidcore classes for the next BOOKING_WINDOW_DAYS — one batched POST for all studios."""
+    from zoneinfo import ZoneInfo
+    ny    = ZoneInfo("America/New_York")
     today = datetime.now(timezone.utc).date()
-    cutoff = today + timedelta(days=BOOKING_WINDOW_DAYS)
+    start = datetime(today.year, today.month, today.day, 4, 0, 0, tzinfo=timezone.utc)
+    end   = start + timedelta(days=BOOKING_WINDOW_DAYS, hours=23, minutes=59, seconds=59)
 
-    for studio_name, studio_cfg in STUDIOS.items():
-        partner_id = studio_cfg["partner_id"]
-        log.info("Fetching schedule for %s (partner %s)", studio_name, partner_id)
+    studio_list = list(STUDIOS.items())
+    operations  = [
+        {
+            "operationName": "partnerClassSchedule",
+            "variables": {
+                "partnerId": studio_cfg["partner_id"],
+                "filters": {
+                    "startDate": start.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                    "endDate":   end.strftime("%Y-%m-%dT%H:%M:%S.999Z"),
+                },
+                "deviceLocation": {"coordinates": [LAT, LNG], "type": "shared"},
+            },
+            "query": SCHEDULE_QUERY,
+        }
+        for _, studio_cfg in studio_list
+    ]
 
-        # Fetch one day at a time (matches app behaviour, avoids large responses)
-        current = today
-        while current <= cutoff:
-            # Date window: midnight ET to midnight ET next day in UTC
-            start = datetime(current.year, current.month, current.day, 4, 0, 0, tzinfo=timezone.utc)
-            end   = start + timedelta(hours=23, minutes=59, seconds=59)
-
-            try:
-                results = _gql([{
-                    "operationName": "partnerClassSchedule",
-                    "variables": {
-                        "partnerId": partner_id,
-                        "filters": {
-                            "startDate": start.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-                            "endDate":   end.strftime("%Y-%m-%dT%H:%M:%S.999Z"),
-                        },
-                        "deviceLocation": {
-                            "coordinates": [LAT, LNG],
-                            "type": "shared",
-                        },
-                    },
-                    "query": SCHEDULE_QUERY,
-                }])
-
-                items = (results[0].get("data", {})
-                         .get("partnerClassSchedule", {})
-                         .get("items", []))
-
-                for item in items:
-                    if item.get("isDisabled"):
-                        continue  # no spots
-                    instructors = item.get("instructors", [])
-                    instructor = instructors[0]["name"] if instructors else "Unknown"
-                    # Strip title suffix e.g. "Maya P. - Senior Master Coach" → "Maya P."
-                    instructor = instructor.split(" - ")[0].strip()
-
-                    dt_raw = item.get("date", "")
-                    try:
-                        dt = datetime.fromisoformat(dt_raw.replace("Z", "+00:00"))
-                        # Convert to ET (UTC-4 during EDT, UTC-5 during EST)
-                        from zoneinfo import ZoneInfo
-                        dt = dt.astimezone(ZoneInfo("America/New_York"))
-                    except Exception:
-                        continue
-
-                    slots.append(ClassSlot(
-                        wellhub_class_id=item["id"],
-                        studio=studio_name,
-                        instructor=instructor,
-                        dt=dt,
-                        class_id_gql=str(item.get("classId", "")),
-                        partner_id=studio_cfg["partner_id"],
-                        available_spots=item.get("availableSpots", 0),
-                        class_name=item.get("name", ""),
-                    ))
-
-            except Exception as exc:
-                log.error("Error fetching %s for %s: %s", current, studio_name, exc)
-
-            current += timedelta(days=1)
-
-        log.info("  %s: %d bookable slots", studio_name, sum(1 for s in slots if s.studio == studio_name))
+    slots: list[ClassSlot] = []
+    try:
+        results = _gql(operations)  # single POST for all studios
+        for i, (studio_name, studio_cfg) in enumerate(studio_list):
+            items = (results[i].get("data", {})
+                     .get("partnerClassSchedule", {})
+                     .get("items", []))
+            for item in items:
+                if item.get("isDisabled"):
+                    continue
+                instructors = item.get("instructors", [])
+                instructor  = instructors[0]["name"].split(" - ")[0].strip() if instructors else "Unknown"
+                dt_raw = item.get("date", "")
+                try:
+                    dt = datetime.fromisoformat(dt_raw.replace("Z", "+00:00")).astimezone(ny)
+                except Exception:
+                    continue
+                slots.append(ClassSlot(
+                    wellhub_class_id=item["id"],
+                    studio=studio_name,
+                    instructor=instructor,
+                    dt=dt,
+                    class_id_gql=str(item.get("classId", "")),
+                    partner_id=studio_cfg["partner_id"],
+                    available_spots=item.get("availableSpots", 0),
+                    class_name=item.get("name", ""),
+                ))
+            log.info("  %s: %d slots", studio_name, sum(1 for s in slots if s.studio == studio_name))
+    except Exception as exc:
+        log.error("Error fetching schedule: %s", exc)
 
     return slots
 
@@ -816,69 +799,69 @@ def get_upcoming_bookings() -> list[WellhubBooking]:
 
 
 def get_extra_slots() -> list[ClassSlot]:
-    """Fetch classes from EXTRA_STUDIOS (Nofar, CorePower) for the next 3 days."""
+    """Fetch classes from EXTRA_STUDIOS (Nofar, CorePower) — one batched POST for all studios."""
     from src.config import EXTRA_STUDIOS, PREFERRED_START_HOUR, PREFERRED_END_HOUR
-    slots: list[ClassSlot] = []
+    from zoneinfo import ZoneInfo
+    ny    = ZoneInfo("America/New_York")
     today = datetime.now(timezone.utc).date()
+    start = datetime(today.year, today.month, today.day, 4, 0, 0, tzinfo=timezone.utc)
+    end   = start + timedelta(days=3, hours=23, minutes=59, seconds=59)
 
-    for studio_name, cfg in EXTRA_STUDIOS.items():
-        partner_id   = cfg["partner_id"]
-        class_filter = cfg.get("class_filter")
-        current = today
-        cutoff  = today + timedelta(days=3)
-        while current <= cutoff:
-            start = datetime(current.year, current.month, current.day, 4, 0, 0, tzinfo=timezone.utc)
-            end   = start + timedelta(hours=23, minutes=59, seconds=59)
-            try:
-                results = _gql([{
-                    "operationName": "partnerClassSchedule",
-                    "variables": {
-                        "partnerId": partner_id,
-                        "filters": {
-                            "startDate": start.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-                            "endDate":   end.strftime("%Y-%m-%dT%H:%M:%S.999Z"),
-                        },
-                        "deviceLocation": {"coordinates": [LAT, LNG], "type": "shared"},
-                    },
-                    "query": SCHEDULE_QUERY,
-                }])
-                items = (results[0].get("data", {})
-                         .get("partnerClassSchedule", {})
-                         .get("items", []))
-                for item in items:
-                    if item.get("isDisabled"):
-                        continue
-                    class_name = item.get("name", "")
-                    if class_filter and class_filter.lower() not in class_name.lower():
-                        continue
-                    instructors = item.get("instructors", [])
-                    instructor  = (instructors[0]["name"].split(" - ")[0].strip()
-                                   if instructors else "")
-                    dt_raw = item.get("date", "")
-                    try:
-                        dt = datetime.fromisoformat(dt_raw.replace("Z", "+00:00"))
-                        from zoneinfo import ZoneInfo
-                        dt = dt.astimezone(ZoneInfo("America/New_York"))
-                    except Exception:
-                        current += timedelta(days=1)
-                        continue
-                    if not (PREFERRED_START_HOUR <= dt.hour < PREFERRED_END_HOUR):
-                        continue
-                    slot = ClassSlot(
-                        wellhub_class_id = item.get("id", ""),
-                        class_id_gql     = str(item.get("classId", "")),
-                        partner_id       = partner_id,
-                        studio           = studio_name,
-                        instructor       = instructor,
-                        dt               = dt,
-                    )
-                    slot._class_name      = class_name
-                    slot._available_spots = item.get("availableSpots", 0)
-                    slots.append(slot)
-            except Exception as exc:
-                log.debug("Extra schedule fetch error %s %s: %s", studio_name, current, exc)
-            current += timedelta(days=1)
-        log.info("Extra studio %s: %d slots", studio_name, sum(1 for s in slots if s.studio == studio_name))
+    studio_list = list(EXTRA_STUDIOS.items())
+    operations  = [
+        {
+            "operationName": "partnerClassSchedule",
+            "variables": {
+                "partnerId": cfg["partner_id"],
+                "filters": {
+                    "startDate": start.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                    "endDate":   end.strftime("%Y-%m-%dT%H:%M:%S.999Z"),
+                },
+                "deviceLocation": {"coordinates": [LAT, LNG], "type": "shared"},
+            },
+            "query": SCHEDULE_QUERY,
+        }
+        for _, cfg in studio_list
+    ]
+
+    slots: list[ClassSlot] = []
+    try:
+        results = _gql(operations)  # single POST for all extra studios
+        for i, (studio_name, cfg) in enumerate(studio_list):
+            class_filter = cfg.get("class_filter")
+            items = (results[i].get("data", {})
+                     .get("partnerClassSchedule", {})
+                     .get("items", []))
+            for item in items:
+                if item.get("isDisabled"):
+                    continue
+                class_name = item.get("name", "")
+                if class_filter and class_filter.lower() not in class_name.lower():
+                    continue
+                dt_raw = item.get("date", "")
+                try:
+                    dt = datetime.fromisoformat(dt_raw.replace("Z", "+00:00")).astimezone(ny)
+                except Exception:
+                    continue
+                if not (PREFERRED_START_HOUR <= dt.hour < PREFERRED_END_HOUR):
+                    continue
+                instructors = item.get("instructors", [])
+                instructor  = instructors[0]["name"].split(" - ")[0].strip() if instructors else ""
+                slot = ClassSlot(
+                    wellhub_class_id=item.get("id", ""),
+                    class_id_gql=str(item.get("classId", "")),
+                    partner_id=cfg["partner_id"],
+                    studio=studio_name,
+                    instructor=instructor,
+                    dt=dt,
+                    available_spots=item.get("availableSpots", 0),
+                    class_name=class_name,
+                )
+                slots.append(slot)
+        log.info("Extra slots total: %d", len(slots))
+    except Exception as exc:
+        log.error("Error fetching extra slots: %s", exc)
+
     return slots
 
 

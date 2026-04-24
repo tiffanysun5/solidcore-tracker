@@ -2,8 +2,8 @@ name: Wellhub change watcher
 
 on:
   schedule:
-    # Run every 15 min between 8am–10pm ET (12:00–02:00 UTC, hard stop at 02:00)
-    - cron: "0,15,30,45 12-23,0,1 * * *"
+    # Run every 30 min between 8am–9:30pm ET (12:00–01:30 UTC)
+    - cron: "0,30 12-23,0,1 * * *"
   workflow_dispatch:
 
 jobs:
