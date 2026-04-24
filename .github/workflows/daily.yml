@@ -1,12 +1,6 @@
 name: Daily class tracker
 
 on:
-  schedule:
-    # 6 AM ET = 10:00 UTC (EDT). GitHub scheduler is unreliable so retry at
-    # 11:00 and 12:00 UTC too — main.py's dedup guard ensures only one email/day.
-    - cron: "0 10 * * *"
-    - cron: "0 11 * * *"
-    - cron: "0 12 * * *"
   workflow_dispatch:
     inputs:
       force_email:
