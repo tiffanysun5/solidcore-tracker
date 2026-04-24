@@ -1,12 +1,7 @@
 name: Sync Wellhub → Calendar
 
 on:
-  schedule:
-    - cron: "30 12 * * *"   # 8:30am ET daily
   workflow_dispatch: {}
-  workflow_run:
-    workflows: ["Book selected classes"]
-    types: [completed]
 
 jobs:
   sync:
